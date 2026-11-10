@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= incluir('Estilo') ?>
+</head>
+<body>
+  <main class="wrap">
+    <h1>me-contrata</h1>
+    <nav>
+      <a href="#perfil">Meu perfil</a>
+      <a href="#vagas">Vagas</a>
+      <a href="#funil">Funil</a>
+      <a href="#recomendacoes">Recomendações</a>
+      <a href="#ficha">Ficha</a>
+    </nav>
+    <p id="status">Conectando…</p>
+  </main>
+  <script>
+    google.script.run
+      .withSuccessHandler(function (r) { document.getElementById("status").textContent = "Servidor ok (v" + r.versao + ")"; })
+      .withFailureHandler(function () { document.getElementById("status").textContent = "Falha ao falar com o servidor."; })
+      .ping();
+  </script>
+</body>
+</html>

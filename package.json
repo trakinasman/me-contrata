@@ -1,0 +1,20 @@
+{
+  "name": "me-contrata",
+  "version": "0.1.0",
+  "description": "Assistente web para candidatos a vagas (Google Apps Script)",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "push": "npm run build && clasp push --force",
+    "deploy": "npm run push && clasp deploy",
+    "open": "clasp open-script",
+    "logs": "clasp tail-logs"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "@google/clasp": "^3.4.1",
+    "@types/google-apps-script": "^2.0.15",
+    "typescript": "^7.0.2"
+  },
+  "private": "true"
+}

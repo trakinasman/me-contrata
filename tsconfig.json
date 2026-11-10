@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["google-apps-script"],
+    "rootDir": "src/server",
+    "outDir": "dist",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noImplicitReturns": true,
+    "removeComments": false,
+    "skipLibCheck": true
+  },
+  "include": ["src/server/**/*.ts"]
+}
