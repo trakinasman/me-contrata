@@ -1,9 +1,13 @@
 /**
  * Cria (ou completa) a planilha e a pasta do Drive e grava os IDs nas
  * Propriedades do Script. Idempotente: pode rodar de novo sem duplicar nada.
- * Rode pelo editor do Apps Script ou com `npm run setup`.
+ * Rode pelo editor do Apps Script.
+ *
+ * Fica pública só para aparecer no menu "Executar" do editor; quem não for o
+ * dono do script é recusado. Não devolve nada para não expor a URL da planilha.
  */
-function setupAmbiente(): string {
+function setupAmbiente(): void {
+  exigirDono_();
   const props = PropertiesService.getScriptProperties();
 
   let ss: GoogleAppsScript.Spreadsheet.Spreadsheet;
@@ -29,12 +33,25 @@ function setupAmbiente(): string {
     props.setProperty(PROP.AGENTE_SEGREDO, Utilities.getUuid() + Utilities.getUuid());
   }
 
-  setupPlanilha(ss);
-  return ss.getUrl();
+  setupPlanilha_(ss);
+  Logger.log("Ambiente pronto. Planilha: " + ss.getUrl());
+}
+
+/**
+ * Recusa a execução se quem chama não for a conta dona do script.
+ * Num web app "Executar como: eu", o usuário efetivo é o dono e o usuário
+ * ativo é o visitante (vazio se anônimo ou de outro domínio).
+ */
+function exigirDono_(): void {
+  const ativo = Session.getActiveUser().getEmail();
+  const dono = Session.getEffectiveUser().getEmail();
+  if (!ativo || ativo !== dono) {
+    throw new Error("Acesso negado: função administrativa.");
+  }
 }
 
 /** Garante as abas, os cabeçalhos e as validações do ESQUEMA. */
-function setupPlanilha(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
+function setupPlanilha_(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
   for (const [nome, colunas] of Object.entries(ESQUEMA)) {
     const aba = ss.getSheetByName(nome) ?? ss.insertSheet(nome);
     const atual = aba.getLastColumn() > 0

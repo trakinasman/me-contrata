@@ -12,6 +12,8 @@ Há um risco **crítico e condicional à publicação**: o manifesto permite ace
 
 ## Achados de segurança
 
+> **Atualização (10/11/2026):** S1, S2 e S4 corrigidos no branch `fix/setup-e-seguranca`: helpers internos passaram a terminar em `_` (privados para `google.script.run`), `setupAmbiente` recusa quem não é o dono e não devolve a URL da planilha, `incluir_` só aceita arquivos de uma lista, e o manifesto passou para `"access": "MYSELF"`. S3 e S5 continuam abertos. D5 resolvido: a pasta é criada pelo serviço avançado Drive v3, mantendo o escopo `drive.file`.
+
 ### S1 — Crítico: leitura anônima de propriedades do Script
 
 - **Evidência:** `src/appsscript.json:5-8` configura `executeAs: USER_DEPLOYING` e `access: ANYONE_ANONYMOUS`. `src/server/Config.ts:11-13` declara `prop(chave)`, que devolve o valor da propriedade solicitada. Os nomes de propriedades sensíveis estão em `src/server/Config.ts:2-7`.
