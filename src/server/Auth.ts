@@ -2,7 +2,9 @@
  * Login por código enviado por e-mail (E1-03) e sessão de 8 horas (E1-04).
  *
  * - O código de 6 dígitos fica só como HMAC no CacheService, por 10 minutos.
- * - 5 códigos errados bloqueiam o e-mail por 1 hora; no máximo 3 pedidos por hora.
+ * - 5 códigos errados em 1 hora bloqueiam o e-mail por 1 hora, mesmo que um
+ *   código novo seja pedido no meio (o contador é do e-mail, não do código).
+ *   No máximo 3 pedidos de código por hora.
  * - Só e-mails ativos da aba Usuarios recebem código, mas a resposta é sempre a
  *   mesma, para não revelar quem está cadastrado.
  * - A sessão é um token aleatório guardado no navegador. Na aba Sessoes fica só
@@ -42,8 +44,12 @@ interface Sessao {
 
 interface EntradaCodigo {
   h: string;
-  t: number;
   expira: number;
+}
+
+interface ContadorErros {
+  n: number;
+  desde: number;
 }
 
 // ---------- Funções chamadas pela página ----------
@@ -79,7 +85,6 @@ function solicitarCodigo(email: string): { mensagem: string } {
     const codigo = gerarCodigo_();
     const entrada: EntradaCodigo = {
       h: hmac_("codigo:" + e + ":" + codigo),
-      t: 0,
       expira: agora + LOGIN.CODIGO_TTL_S * 1000,
     };
     cache.put("cod:" + chave, JSON.stringify(entrada), LOGIN.CODIGO_TTL_S);
@@ -122,19 +127,24 @@ function validarCodigo(
     }
 
     if (!iguais_(entrada.h, hmac_("codigo:" + e + ":" + c))) {
-      entrada.t += 1;
-      if (entrada.t >= LOGIN.MAX_TENTATIVAS) {
-        cache.remove("cod:" + chave);
+      // Janela de 1 hora contada a partir do primeiro erro.
+      const anterior = JSON.parse(cache.get("err:" + chave) ?? "null") as ContadorErros | null;
+      const erros: ContadorErros = anterior && agora - anterior.desde < 60 * 60 * 1000
+        ? { n: anterior.n + 1, desde: anterior.desde }
+        : { n: 1, desde: agora };
+      if (erros.n >= LOGIN.MAX_TENTATIVAS) {
+        cache.removeAll(["cod:" + chave, "err:" + chave]);
         cache.put("bloq:" + chave, "1", LOGIN.BLOQUEIO_S);
         registrarLog_("", "login_bloqueio", "");
         throw new Error(MSG_BLOQUEADO);
       }
-      const restante = Math.max(1, Math.ceil((entrada.expira - agora) / 1000));
-      cache.put("cod:" + chave, JSON.stringify(entrada), restante);
-      throw new Error(MSG_CODIGO_INVALIDO);
+      const janela = Math.max(1, Math.ceil((erros.desde + 60 * 60 * 1000 - agora) / 1000));
+      cache.put("err:" + chave, JSON.stringify(erros), janela);
+      const faltam = LOGIN.MAX_TENTATIVAS - erros.n;
+      throw new Error(`${MSG_CODIGO_INVALIDO} ${faltam === 1 ? "Resta 1 tentativa" : `Restam ${faltam} tentativas`}.`);
     }
 
-    cache.remove("cod:" + chave);
+    cache.removeAll(["cod:" + chave, "err:" + chave]);
     const u = buscarUsuarioPorEmail_(e);
     if (!u || !u.ativo) throw new Error(MSG_CODIGO_INVALIDO);
 
