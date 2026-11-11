@@ -24,7 +24,7 @@ Assistente web para candidatos a vagas, em Google Apps Script.
 
 ### Liberar acesso para outra pessoa
 
-O acesso é por lista fechada (decisão D4 do plano). Na aba `Usuarios`, acrescente uma linha com `email` e `ativo` = `TRUE` (e, se quiser, `nome`). O `usuario_id` e o `criado_em` são preenchidos sozinhos no primeiro login; `papel` vazio vale como `candidato`. Para bloquear alguém, mude `ativo` para `FALSE`: as sessões dessa pessoa deixam de valer em até 10 minutos.
+O acesso é por lista fechada (decisão D4 do plano). Na aba `Usuarios`, acrescente uma linha com `email` e marque a caixa `ativo` (`TRUE`) (e, se quiser, `nome`). O `usuario_id` e o `criado_em` são preenchidos sozinhos no primeiro login; `papel` vazio vale como `candidato`. Para bloquear alguém, mude `ativo` para `FALSE`: as sessões dessa pessoa deixam de valer em até 10 minutos.
 
 Se alguém errar o código 5 vezes, o e-mail fica bloqueado por 1 hora. Para liberar antes, rode `desbloquearLogins` no editor: ela libera todos os e-mails da aba `Usuarios`.
 

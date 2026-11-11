@@ -11,7 +11,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. O próximo p
 |---|---|---|
 | 0 — Preparação | Parcial | P0-02 (projeto, planilha, pasta) e P0-03 (chave da API) feitos. Falta confirmar o teto de gasto mensal no Console da Anthropic. P0-01 (scripts `build_cv_*.js`) e P0-04 (revisar `voice.md`) ficam fora deste repositório |
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. E1-01 sem as validações de UF, `ativo` e Preferencias (achado D1). E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
-| 2 — Ficha do candidato | **Próxima** | Ver abaixo |
+| 2 — Ficha do candidato | **Em andamento** | E2-01 implementada, falta o teste no web app. Ver abaixo |
 | 3 — Agente gravando na planilha | A fazer | Depende de decidir o modelo de vagas (D2) |
 | 4 a 8 — Perfil, vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
@@ -22,6 +22,8 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. O próximo p
 | E2-01 | Tela da ficha nas seções do `voice.md`, com status por item (confirmado, a confirmar, proibido) | O candidato edita e muda o status de cada item | Primeira função com dados: toda função começa com `exigirAceite_(token)`. Base visual: aba Perfil > Ficha do `prototipo/index.html` |
 | E2-02 | Rascunho da ficha a partir do PDF: a IA propõe itens, todos como "a confirmar" | Nenhum item gerado entra como confirmado sem clique do candidato | Depende do upload de PDF (E4-01). Extrair o texto uma vez e guardar (decisão A2) |
 | E2-03 | Migrar a ficha do Roberto a partir do `voice.md` e da memória | Itens da lista "não afirmar" entram como proibidos | Precisa do `voice.md` revisado (P0-04) |
+
+**E2-01 implementada (11/11/2026):** `src/server/Ficha.ts` (`listarFicha`, `salvarItemFicha`, `excluirItemFicha`) e a tela Perfil > Ficha em `Index.html`. A coluna `item` da aba Fichas guarda o ID do item. Testada localmente com Apps Script simulado (isolamento entre dois usuários, sessão, termo, validações, texto que começa com `=`); falta testar no web app de verdade. O nome da seção `posicoes` na tela ("Posições: o que você defende") precisa ser conferido com o `voice.md`.
 
 **Ao terminar a E2-01:** fazer o teste de isolamento do plano com dois usuários (o token de um não lê nem altera a ficha do outro). Se passar, mudar o acesso do manifesto de `MYSELF` para permitir candidatos sem conta Google e publicar a primeira versão (`npm run deploy`).
 
@@ -42,7 +44,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. O próximo p
 | Item | Quando |
 |---|---|
 | Gatilho diário para apagar sessões vencidas da aba `Sessoes` | Antes de abrir para outros usuários |
-| Completar validações da planilha: UFs, `ativo`, Preferencias (D1) | Junto com a E2-01 |
+| ~~Completar validações da planilha: UFs, `ativo`, Preferencias (D1)~~ | Feito com a E2-01 (`VALIDACOES_ESPECIAIS`). Rodar `setupAmbiente()` para aplicar. A validação no servidor das Preferencias vem com a tela de Preferências |
 | Modelo de recomendações com ID e textos gerados (D3) | Antes da Etapa 6 |
 | Upload de PDF de até 5 MB testado ponta a ponta, inclusive no celular (D6) | Na E4-01 |
 | Pastas por usuário no Drive, coluna `pasta_id` (A1) | No primeiro upload (E4-01) |

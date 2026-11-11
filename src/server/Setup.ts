@@ -98,6 +98,25 @@ function exigirDono_(): void {
   }
 }
 
+/** Monta a regra de VALIDACOES_ESPECIAIS. `celula` é a primeira célula da faixa (ex.: "D2"). */
+function regraEspecial_(
+  tipo: "caixa" | "nota" | { varios: string },
+  celula: string,
+): GoogleAppsScript.Spreadsheet.DataValidation {
+  const b = SpreadsheetApp.newDataValidation().setAllowInvalid(false);
+  if (tipo === "caixa") return b.requireCheckbox().build();
+  if (tipo === "nota") {
+    return b.requireNumberBetween(0, 100).setHelpText("Número de 0 a 100.").build();
+  }
+  const opcoes = LISTAS[tipo.varios].map((v) => v.toLowerCase()).join("|");
+  const regex = `^\\s*(${opcoes})(\\s*,\\s*(${opcoes}))*\\s*$`;
+  return b
+    // Fórmulas gravadas pela API usam a sintaxe en-US (vírgula), qualquer que seja a localidade.
+    .requireFormulaSatisfied(`=OR(ISBLANK(${celula}),REGEXMATCH(LOWER(${celula}),"${regex}"))`)
+    .setHelpText("Um ou mais valores separados por vírgula: " + LISTAS[tipo.varios].join(", "))
+    .build();
+}
+
 /** Garante as abas, os cabeçalhos e as validações do ESQUEMA. */
 function setupPlanilha_(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
   for (const [nome, colunas] of Object.entries(ESQUEMA)) {
@@ -121,6 +140,12 @@ function setupPlanilha_(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
         .setAllowInvalid(false)
         .build();
       aba.getRange(2, idx + 1, aba.getMaxRows() - 1, 1).setDataValidation(regra);
+    }
+    for (const [coluna, tipo] of Object.entries(VALIDACOES_ESPECIAIS[nome] ?? {})) {
+      const idx = cabecalho.indexOf(coluna);
+      if (idx < 0) continue;
+      const faixa = aba.getRange(2, idx + 1, aba.getMaxRows() - 1, 1);
+      faixa.setDataValidation(regraEspecial_(tipo, faixa.getCell(1, 1).getA1Notation()));
     }
   }
   // Remove a aba padrão criada com a planilha.
