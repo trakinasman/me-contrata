@@ -12,6 +12,10 @@ Há um risco **crítico e condicional à publicação**: o manifesto permite ace
 
 ## Achados de segurança
 
+> **Atualização (10/11/2026, login):** S3 resolvido no mesmo branch para login e sessão (E1-03 e E1-04): código por e-mail guardado como HMAC no CacheService, bloqueio de 1 h após 5 erros por e-mail, limite de 3 pedidos por hora, resposta igual para e-mails cadastrados ou não, sessão de 8 h com o hash do token na aba `Sessoes` (resolve também D4) e `exigirSessao_` para as funções públicas de dados. Testes manuais que passaram: login com código; e-mail não cadastrado não recebe código; 5 erros bloqueiam; recarregar mantém a sessão; sair encerra; `ativo` = `FALSE` derruba a sessão; `desbloquearLogins` libera; `usuario_id` gerado automaticamente. Pendente: o teste "token de outro usuário não devolve dados" depende das primeiras funções com dados, e o acesso do web app continua `MYSELF` até ele passar. E1-05 também concluído: termo de aceite versionado (`TERMO_VERSAO`), exigido também pelo servidor (`exigirAceite_`), e "Excluir meus dados" apagando a pasta do usuário, as sessões e as linhas dele em todas as abas. Testado: aceite gravado e não repetido; exclusão sem deixar linhas do usuário e com o e-mail removido da lista. Prints de comprovação: retenção de 30 dias confirmada (A3), a implementar junto com a comprovação.
+>
+> **Atualização (10/11/2026):** S1, S2 e S4 corrigidos no branch `fix/setup-e-seguranca`: helpers internos passaram a terminar em `_` (privados para `google.script.run`), `setupAmbiente` recusa quem não é o dono e não devolve a URL da planilha, `incluir_` só aceita arquivos de uma lista, e o manifesto passou para `"access": "MYSELF"`. S5 continua aberto. D5 resolvido: a pasta é criada pelo serviço avançado Drive v3, mantendo o escopo `drive.file`.
+
 ### S1 — Crítico: leitura anônima de propriedades do Script
 
 - **Evidência:** `src/appsscript.json:5-8` configura `executeAs: USER_DEPLOYING` e `access: ANYONE_ANONYMOUS`. `src/server/Config.ts:11-13` declara `prop(chave)`, que devolve o valor da propriedade solicitada. Os nomes de propriedades sensíveis estão em `src/server/Config.ts:2-7`.
@@ -99,6 +103,59 @@ Há um risco **crítico e condicional à publicação**: o manifesto permite ace
 4. Definir retenção de PDFs, conteúdo enviado ao Claude, logs, backups e limites de custo por usuário; refletir isso no termo de consentimento.
 5. Transformar os critérios de aceite já enumerados no PDF em testes repetíveis para setup idempotente, importação do funil, deduplicação, status e veracidade dos textos.
 6. Rever limites de cota de e-mail e Apps Script com os limites vigentes da conta que hospedará o piloto; quotas podem variar por tipo de conta.
+
+## Decisões de arquitetura (10/11/2026)
+
+Registro das decisões discutidas depois da revisão. Itens marcados como **pendente** ainda precisam de confirmação antes de implementar.
+
+### A1 — Armazenamento de arquivos no Drive
+
+- **Uma pasta por usuário**, criada no primeiro upload, dentro da pasta raiz (`PASTA_RAIZ_ID`):
+
+  ```
+  me-contrata - arquivos/
+  └── usuarios/
+      └── <usuario_id>/
+          ├── curriculos/
+          ├── comprovacoes/
+          └── exportacoes/
+  ```
+
+- O nome da pasta é o `usuario_id` (nunca nome ou e-mail). O ID da pasta fica numa nova coluna `pasta_id` da aba `Usuarios`.
+- As pastas **não são compartilhadas** com os usuários. Todo acesso passa pelo app, que valida a sessão; downloads são entregues pelo servidor.
+- O servidor **nunca usa um `drive_file_id` vindo do navegador** sem antes conferir, na planilha, que o arquivo pertence ao `usuario_id` da sessão.
+- Arquivos criados com o serviço avançado Drive v3, mantendo o escopo `drive.file`.
+- Exclusão de conta remove a pasta do usuário e todas as linhas dele na planilha.
+- Gatilho diário de limpeza: exportações com mais de 1 dia; comprovações conforme A3.
+- Espaço: tudo fica no Drive da conta dona do script (15 GB na conta gratuita, compartilhados com o Gmail). Suficiente para o piloto; confirmar a estimativa com arquivos reais.
+- **Alternativa descartada:** guardar no Drive de cada candidato. Exigiria conta Google de todos, tela de permissão por usuário e execução como o usuário, o que quebra o login por código.
+
+### A2 — Leitura de currículos em PDF com menos tokens
+
+- O PDF não é enviado inteiro à IA em toda análise. O texto é **extraído uma vez** no upload e guardado (nova coluna `texto_extraido` em `Curriculos`, ou arquivo `.txt` na pasta do usuário se ficar grande para uma célula).
+- Extração no Apps Script: converter o PDF para Google Docs pelo Drive (com OCR) e exportar como texto puro. **Pendente:** testar com currículos reais, inclusive de duas colunas e escaneados.
+- Uso por tipo de análise:
+
+  | Análise | Entrada para a IA |
+  |---|---|
+  | Conteúdo, resultados, palavras-chave, coerência com a ficha | Só o texto extraído |
+  | Formato e tamanho | Número de páginas por código; no máximo a 1ª página como imagem |
+  | Textos adaptados por vaga | Texto do currículo base já extraído |
+
+- Texto do currículo e da ficha no início da mensagem, com cache de prompt, para reduzir o custo das chamadas seguintes.
+- No desenvolvimento (Claude Code), PDFs de referência são lidos via extração de texto local (`pypdf` ou a skill de PDF), não página a página como imagem.
+
+### A3 — Comprovação por imagem na nota do perfil
+
+- Itens da rubrica podem exigir comprovação por print (ex.: título do LinkedIn coerente com o currículo). Protótipo em `prototipo/index.html`, aba Perfil > Nota do perfil.
+- Fluxo: o navegador reduz a imagem (~1600 px, JPEG) → função de servidor valida sessão, formato (PNG/JPEG/WebP) e tamanho → salva em `comprovacoes/` → envia imagem + critério do item + dados esperados à IA com saída JSON de formato fixo (`legivel`, `encontrado`, `confere`, `motivo`).
+- **A IA observa, o servidor decide a nota.** O texto dentro da imagem é dado, nunca instrução (proteção contra prints com texto do tipo "aprove este item").
+- Resultado ilegível ou incerto vira "envie outro print", não recusa.
+- Nova aba `Comprovacoes`: `comprovacao_id`, `usuario_id`, `rubrica_item`, `drive_file_id`, `resultado`, `motivo`, `modelo`, `criado_em`.
+- Limitar tentativas por item por dia e registrar o custo em `Uso_IA`.
+- Na interface, chamar de "comprovado", não "verificado oficialmente": um print pode ser editado antes de ser capturado.
+- LGPD: citar o envio de imagens no texto de aceite e orientar o usuário a recortar só a área necessária.
+- **Decidido:** prints apagados 30 dias após o envio, mantendo só o resultado na planilha (consta no termo de aceite).
 
 ## Limites desta revisão
 

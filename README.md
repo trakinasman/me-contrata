@@ -2,7 +2,7 @@
 
 Assistente web para candidatos a vagas, em Google Apps Script.
 
-> **Aviso de segurança:** a configuração atual ainda permite acesso anônimo e contém funções de servidor que não devem ficar expostas. Não publique o Web App com a configuração atual. Consulte [ANALISE_PROJETO.md](ANALISE_PROJETO.md) antes de implantar.
+> **Aviso de segurança:** o web app está restrito ao dono do script (`"access": "MYSELF"`) até existir login por código com sessão e isolamento por usuário (achado S3 em [ANALISE_PROJETO.md](ANALISE_PROJETO.md)). Não abra o acesso para outras pessoas antes disso.
 
 ## Primeira configuração
 
@@ -16,9 +16,15 @@ Assistente web para candidatos a vagas, em Google Apps Script.
    ```
    Se o clasp sobrescrever `dist/appsscript.json`, rode `npm run build` de novo.
 5. Envie o código: `npm run push`
-6. No editor (`npm run open`), rode `setupAmbiente` uma vez. Ele cria a planilha, a pasta do Drive e o segredo do agente, e grava os IDs nas Propriedades do Script.
+6. No editor (`npm run open`), rode `setupAmbiente` uma vez. Ele cria a planilha, a pasta do Drive, o segredo do agente e o segredo do login, grava os IDs nas Propriedades do Script e cadastra a sua conta como `admin` na aba `Usuarios`.
 7. Em Configurações do projeto > Propriedades do script, adicione `CLAUDE_API_KEY`.
 8. Publique o web app: `npm run deploy`
+
+### Liberar acesso para outra pessoa
+
+O acesso é por lista fechada (decisão D4 do plano). Na aba `Usuarios`, acrescente uma linha com `email` e `ativo` = `TRUE` (e, se quiser, `nome`). O `usuario_id` e o `criado_em` são preenchidos sozinhos no primeiro login; `papel` vazio vale como `candidato`. Para bloquear alguém, mude `ativo` para `FALSE`: as sessões dessa pessoa deixam de valer em até 10 minutos.
+
+Se alguém errar o código 5 vezes, o e-mail fica bloqueado por 1 hora. Para liberar antes, rode `desbloquearLogins` no editor: ela libera todos os e-mails da aba `Usuarios`.
 
 ## Estrutura
 
