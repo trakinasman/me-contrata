@@ -2,7 +2,7 @@
 
 Assistente web para candidatos a vagas, em Google Apps Script.
 
-> **Andamento:** Etapa 1 do piloto concluída (login, sessão e LGPD). Veja [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md).
+> **Andamento:** Etapa 1 do piloto concluída (login, sessão e LGPD). Etapa 2 em andamento: a ficha do candidato (E2-01) está implementada. Veja [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md).
 
 > **Aviso de segurança:** o web app está restrito ao dono do script (`"access": "MYSELF"`) até existir login por código com sessão e isolamento por usuário (achado S3 em [ANALISE_PROJETO.md](ANALISE_PROJETO.md)). Não abra o acesso para outras pessoas antes disso.
 
@@ -27,6 +27,18 @@ Assistente web para candidatos a vagas, em Google Apps Script.
 O acesso é por lista fechada (decisão D4 do plano). Na aba `Usuarios`, acrescente uma linha com `email` e marque a caixa `ativo` (`TRUE`) (e, se quiser, `nome`). O `usuario_id` e o `criado_em` são preenchidos sozinhos no primeiro login; `papel` vazio vale como `candidato`. Para bloquear alguém, mude `ativo` para `FALSE`: as sessões dessa pessoa deixam de valer em até 10 minutos.
 
 Se alguém errar o código 5 vezes, o e-mail fica bloqueado por 1 hora. Para liberar antes, rode `desbloquearLogins` no editor: ela libera todos os e-mails da aba `Usuarios`.
+
+### Se alguém não recebe o código
+
+A página responde sempre a mesma mensagem, para não revelar quem está cadastrado. O motivo real fica na aba `Log`:
+
+| `evento` | `detalhe` | O que fazer |
+|---|---|---|
+| `login_codigo_enviado` | | O e-mail saiu. Procure por "código de acesso" na caixa de entrada; para a conta dona, o remetente aparece como "eu" |
+| `login_email_nao_cadastrado` | `nao_encontrado` | O e-mail não está na aba `Usuarios`. Para a conta dona, rode `setupAmbiente` |
+| `login_email_nao_cadastrado` | `inativo` | A linha existe, mas a caixa `ativo` não está marcada |
+| `login_limite_pedidos` | | Mais de 3 pedidos na última hora (conta mesmo para e-mail não cadastrado). Espere ou rode `desbloquearLogins` |
+| `login_recusado` | `nao_encontrado` ou `inativo` | O código estava certo, mas o cadastro foi apagado ou desativado depois do envio |
 
 ## Estrutura
 

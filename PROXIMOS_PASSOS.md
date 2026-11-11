@@ -1,17 +1,17 @@
 # Próximos passos
 
-**Atualizado em:** 10/11/2026, após o merge da Etapa 1 (PR #1).
+**Atualizado em:** 11/11/2026, com a E2-01 implementada (branch `etapa2/e2-01-ficha`).
 **Fonte:** plano do piloto "Funil de Candidaturas — Skills e piloto da página" (doc no claude.ai) e [`ANALISE_PROJETO.md`](ANALISE_PROJETO.md).
 
-A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. O próximo passo é a **Etapa 2 (ficha do candidato)**: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
+A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 (ficha do candidato)** está em andamento: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
 
 ## Onde estamos
 
 | Etapa | Situação | Observação |
 |---|---|---|
 | 0 — Preparação | Parcial | P0-02 (projeto, planilha, pasta) e P0-03 (chave da API) feitos. Falta confirmar o teto de gasto mensal no Console da Anthropic. P0-01 (scripts `build_cv_*.js`) e P0-04 (revisar `voice.md`) ficam fora deste repositório |
-| 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. E1-01 sem as validações de UF, `ativo` e Preferencias (achado D1). E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
-| 2 — Ficha do candidato | **Em andamento** | E2-01 implementada, falta o teste no web app. Ver abaixo |
+| 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
+| 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | A fazer | Depende de decidir o modelo de vagas (D2) |
 | 4 a 8 — Perfil, vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
@@ -23,7 +23,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. O próximo p
 | E2-02 | Rascunho da ficha a partir do PDF: a IA propõe itens, todos como "a confirmar" | Nenhum item gerado entra como confirmado sem clique do candidato | Depende do upload de PDF (E4-01). Extrair o texto uma vez e guardar (decisão A2) |
 | E2-03 | Migrar a ficha do Roberto a partir do `voice.md` e da memória | Itens da lista "não afirmar" entram como proibidos | Precisa do `voice.md` revisado (P0-04) |
 
-**E2-01 implementada (11/11/2026):** `src/server/Ficha.ts` (`listarFicha`, `salvarItemFicha`, `excluirItemFicha`) e a tela Perfil > Ficha em `Index.html`. A coluna `item` da aba Fichas guarda o ID do item. Testada localmente com Apps Script simulado (isolamento entre dois usuários, sessão, termo, validações, texto que começa com `=`); falta testar no web app de verdade. O nome da seção `posicoes` na tela ("Posições: o que você defende") precisa ser conferido com o `voice.md`.
+**E2-01 implementada (11/11/2026):** `src/server/Ficha.ts` (`listarFicha`, `salvarItemFicha`, `excluirItemFicha`) e a tela Perfil > Ficha em `Index.html`. A coluna `item` da aba Fichas guarda o ID do item. Testada localmente com Apps Script simulado (isolamento entre dois usuários, sessão, termo, validações, texto que começa com `=`). Já está no Apps Script (`npm run push`) e o login na URL `/dev` funciona; falta testar a tela da ficha no web app. O nome da seção `posicoes` na tela ("Posições: o que você defende") precisa ser conferido com o `voice.md`.
 
 **Ao terminar a E2-01:** fazer o teste de isolamento do plano com dois usuários (o token de um não lê nem altera a ficha do outro). Se passar, mudar o acesso do manifesto de `MYSELF` para permitir candidatos sem conta Google e publicar a primeira versão (`npm run deploy`).
 
@@ -38,6 +38,10 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. O próximo p
 | E3-05 | Deduplicar por fonte+id e por título+empresa; vaga descartada nunca é recriada | Rodar duas vezes seguidas não duplica nada |
 
 **Antes de começar:** decidir o modelo de vagas (D2: catálogo único de vagas + estado por candidato, ou uma linha por candidato). Na E3-01, aplicar os controles do achado S5: validar formato e tamanho do payload, limitar volume, não registrar o segredo em logs e evitar duplicação.
+
+**Registro de 11/11/2026:**
+- O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
+- O login parou de funcionar porque a aba `Usuarios` ficou vazia (o conteúdo foi apagado na planilha, não pelo app). `setupAmbiente()` recadastrou a conta dona. Para facilitar o próximo diagnóstico, o Log agora registra o motivo da recusa (`nao_encontrado` ou `inativo`); veja "Se alguém não recebe o código" no README.
 
 ## Pendências técnicas
 
