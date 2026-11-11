@@ -33,8 +33,31 @@ function setupAmbiente(): void {
     props.setProperty(PROP.AGENTE_SEGREDO, Utilities.getUuid() + Utilities.getUuid());
   }
 
+  if (!props.getProperty(PROP.LOGIN_SEGREDO)) {
+    props.setProperty(PROP.LOGIN_SEGREDO, Utilities.getUuid() + Utilities.getUuid());
+  }
+
   setupPlanilha_(ss);
+  cadastrarDonoComoAdmin_();
   Logger.log("Ambiente pronto. Planilha: " + ss.getUrl());
+}
+
+/**
+ * Garante que a conta dona do script esteja na aba Usuarios como admin ativo,
+ * para o primeiro login funcionar. O e-mail vem da própria conta, nunca do código.
+ */
+function cadastrarDonoComoAdmin_(): void {
+  const dono = Session.getEffectiveUser().getEmail().trim().toLowerCase();
+  if (!dono || buscarUsuarioPorEmail_(dono)) return;
+  anexarLinha_("Usuarios", {
+    usuario_id: Utilities.getUuid(),
+    email: dono,
+    nome: "",
+    papel: "admin",
+    ativo: true,
+    criado_em: new Date(),
+  });
+  Logger.log("Conta dona cadastrada como admin na aba Usuarios.");
 }
 
 /**

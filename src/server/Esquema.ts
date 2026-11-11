@@ -15,6 +15,7 @@ const ESQUEMA: Record<string, string[]> = {
   Rubricas: ["rubrica_id", "versao", "item", "pontos", "criterio"],
   Uso_IA: ["usuario_id", "funcao", "modelo", "tokens_entrada", "tokens_saida", "custo_estimado", "data"],
   Log: ["data", "usuario_id", "evento", "detalhe"],
+  Sessoes: ["token_hash", "usuario_id", "criado_em", "expira_em", "revogada"],
 };
 
 /** Listas usadas nas validações de dados da planilha. */

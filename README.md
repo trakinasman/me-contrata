@@ -16,9 +16,13 @@ Assistente web para candidatos a vagas, em Google Apps Script.
    ```
    Se o clasp sobrescrever `dist/appsscript.json`, rode `npm run build` de novo.
 5. Envie o código: `npm run push`
-6. No editor (`npm run open`), rode `setupAmbiente` uma vez. Ele cria a planilha, a pasta do Drive e o segredo do agente, e grava os IDs nas Propriedades do Script.
+6. No editor (`npm run open`), rode `setupAmbiente` uma vez. Ele cria a planilha, a pasta do Drive, o segredo do agente e o segredo do login, grava os IDs nas Propriedades do Script e cadastra a sua conta como `admin` na aba `Usuarios`.
 7. Em Configurações do projeto > Propriedades do script, adicione `CLAUDE_API_KEY`.
 8. Publique o web app: `npm run deploy`
+
+### Liberar acesso para outra pessoa
+
+O acesso é por lista fechada (decisão D4 do plano). Na aba `Usuarios`, acrescente uma linha com `usuario_id` (qualquer UUID), `email`, `nome`, `papel` = `candidato` e `ativo` = `TRUE`. Para bloquear alguém, mude `ativo` para `FALSE`: as sessões dessa pessoa deixam de valer em até 10 minutos.
 
 ## Estrutura
 

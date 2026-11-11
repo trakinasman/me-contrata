@@ -6,22 +6,148 @@
   <?!= incluir_('Estilo') ?>
 </head>
 <body>
-  <main class="wrap">
-    <h1>me-contrata</h1>
-    <nav>
-      <a href="#perfil">Meu perfil</a>
-      <a href="#vagas">Vagas</a>
-      <a href="#funil">Funil</a>
-      <a href="#recomendacoes">Recomendações</a>
-      <a href="#ficha">Ficha</a>
-    </nav>
-    <p id="status">Conectando…</p>
-  </main>
+  <p id="carregando" class="centro muted">Carregando…</p>
+
+  <!-- Passo 1: e-mail -->
+  <div id="tela-email" class="login" hidden>
+    <form id="form-email" class="card stack" novalidate>
+      <h1>me-contrata</h1>
+      <p class="muted">Seu assistente para candidaturas. Entre com seu e-mail: enviamos um código de acesso, sem senha.</p>
+      <div>
+        <label for="email">E-mail</label>
+        <input type="email" id="email" autocomplete="email" required>
+      </div>
+      <p id="erro-email" class="erro" role="alert"></p>
+      <button class="btn prim" type="submit">Receber código</button>
+    </form>
+  </div>
+
+  <!-- Passo 2: código -->
+  <div id="tela-codigo" class="login" hidden>
+    <form id="form-codigo" class="card stack" novalidate>
+      <h2>Digite o código</h2>
+      <p class="muted small" id="aviso-codigo"></p>
+      <div>
+        <label for="codigo">Código de 6 dígitos</label>
+        <input type="text" id="codigo" class="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+      </div>
+      <p id="erro-codigo" class="erro" role="alert"></p>
+      <button class="btn prim" type="submit">Entrar</button>
+      <button class="btn" type="button" id="outro-email">Usar outro e-mail</button>
+    </form>
+  </div>
+
+  <!-- Área logada (as telas do protótipo entram nas próximas etapas) -->
+  <div id="tela-app" hidden>
+    <header class="topo-app">
+      <span class="marca">me-contrata</span>
+      <span class="small muted" id="quem"></span>
+      <button class="btn mini" type="button" id="sair">Sair</button>
+    </header>
+    <main class="wrap">
+      <nav>
+        <a href="#inicio">Início</a>
+        <a href="#vagas">Vagas</a>
+        <a href="#funil">Funil</a>
+        <a href="#recomendacoes">Recomendações</a>
+        <a href="#perfil">Perfil</a>
+      </nav>
+      <div class="card">
+        <h2>Login funcionando</h2>
+        <p class="muted" id="info-sessao"></p>
+      </div>
+    </main>
+  </div>
+
   <script>
-    google.script.run
-      .withSuccessHandler(function (r) { document.getElementById("status").textContent = "Servidor ok (v" + r.versao + ")"; })
-      .withFailureHandler(function () { document.getElementById("status").textContent = "Falha ao falar com o servidor."; })
-      .ping();
+    "use strict";
+    var CHAVE = "mc_sessao";
+    var emailAtual = "";
+    var tokenAtual = lerToken();
+
+    // O token também fica na memória: se o navegador bloquear o armazenamento,
+    // o login continua valendo até recarregar a página.
+    function lerToken() { try { return localStorage.getItem(CHAVE); } catch (e) { return null; } }
+    function salvarToken(t) { tokenAtual = t; try { localStorage.setItem(CHAVE, t); } catch (e) {} }
+    function apagarToken() { tokenAtual = null; try { localStorage.removeItem(CHAVE); } catch (e) {} }
+
+    function el(id) { return document.getElementById(id); }
+    function mostrar(id) {
+      ["carregando", "tela-email", "tela-codigo", "tela-app"].forEach(function (t) { el(t).hidden = t !== id; });
+      var foco = { "tela-email": "email", "tela-codigo": "codigo" }[id];
+      if (foco) el(foco).focus();
+    }
+    function textoErro(err) {
+      var m = (err && err.message) || String(err || "");
+      return m.replace(/^(Exception|Error):\s*/, "") || "Algo deu errado. Tente de novo.";
+    }
+    function ocupado(form, sim) {
+      Array.prototype.forEach.call(form.querySelectorAll("button, input"), function (x) { x.disabled = sim; });
+    }
+
+    // Chama o servidor. Sessão inválida em qualquer chamada leva de volta ao login.
+    function chamar(funcao, args, ok, falha) {
+      google.script.run
+        .withSuccessHandler(ok)
+        .withFailureHandler(function (err) {
+          var msg = textoErro(err);
+          if (msg.indexOf("SESSAO_INVALIDA") >= 0) { apagarToken(); mostrar("tela-email"); return; }
+          if (falha) falha(msg);
+        })[funcao].apply(null, args);
+    }
+
+    function entrarNoApp(usuario) {
+      el("quem").textContent = usuario.nome || usuario.email;
+      var expira = new Date(usuario.expiraEm);
+      el("info-sessao").textContent = "Você entrou como " + usuario.email + " (" + usuario.papel +
+        "). A sessão vale até " + expira.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + ".";
+      mostrar("tela-app");
+    }
+
+    el("form-email").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var form = ev.target, email = el("email").value.trim();
+      el("erro-email").textContent = "";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { el("erro-email").textContent = "Digite um e-mail válido."; return; }
+      ocupado(form, true);
+      chamar("solicitarCodigo", [email], function (r) {
+        ocupado(form, false);
+        emailAtual = email;
+        el("aviso-codigo").textContent = r.mensagem + " Enviado para " + email + "; vale por 10 minutos.";
+        el("codigo").value = "";
+        el("erro-codigo").textContent = "";
+        mostrar("tela-codigo");
+      }, function (msg) { ocupado(form, false); el("erro-email").textContent = msg; });
+    });
+
+    el("form-codigo").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var form = ev.target, codigo = el("codigo").value.trim();
+      el("erro-codigo").textContent = "";
+      if (!/^\d{6}$/.test(codigo)) { el("erro-codigo").textContent = "O código tem 6 dígitos."; return; }
+      ocupado(form, true);
+      chamar("validarCodigo", [emailAtual, codigo], function (r) {
+        ocupado(form, false);
+        salvarToken(r.token);
+        entrarNoApp({ nome: r.usuario.nome, email: r.usuario.email, papel: r.usuario.papel, expiraEm: r.expiraEm });
+      }, function (msg) { ocupado(form, false); el("erro-codigo").textContent = msg; el("codigo").select(); });
+    });
+
+    el("outro-email").addEventListener("click", function () { mostrar("tela-email"); });
+
+    el("sair").addEventListener("click", function () {
+      var t = tokenAtual;
+      apagarToken();
+      mostrar("tela-email");
+      if (t) chamar("sair", [t], function () {}, function () {});
+    });
+
+    // Ao abrir: se houver token guardado, confere com o servidor.
+    if (tokenAtual) {
+      chamar("sessaoAtual", [tokenAtual], entrarNoApp, function () { apagarToken(); mostrar("tela-email"); });
+    } else {
+      mostrar("tela-email");
+    }
   </script>
 </body>
 </html>
