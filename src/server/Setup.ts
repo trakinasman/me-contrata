@@ -80,8 +80,9 @@ function desbloquearLogins(): void {
     n++;
   }
   if (chaves.length) CacheService.getScriptCache().removeAll(chaves);
-  registrarLog_("", "admin_desbloqueio", `${n} e-mails`);
-  Logger.log(`Logins liberados para ${n} e-mails da aba Usuarios.`);
+  const qtd = n === 1 ? "1 e-mail" : `${n} e-mails`;
+  registrarLog_("", "admin_desbloqueio", qtd);
+  Logger.log(`Logins liberados para ${qtd} da aba Usuarios.`);
 }
 
 /**

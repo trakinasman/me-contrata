@@ -12,7 +12,9 @@ Há um risco **crítico e condicional à publicação**: o manifesto permite ace
 
 ## Achados de segurança
 
-> **Atualização (10/11/2026):** S1, S2 e S4 corrigidos no branch `fix/setup-e-seguranca`: helpers internos passaram a terminar em `_` (privados para `google.script.run`), `setupAmbiente` recusa quem não é o dono e não devolve a URL da planilha, `incluir_` só aceita arquivos de uma lista, e o manifesto passou para `"access": "MYSELF"`. S3 e S5 continuam abertos. D5 resolvido: a pasta é criada pelo serviço avançado Drive v3, mantendo o escopo `drive.file`.
+> **Atualização (10/11/2026, login):** S3 resolvido no mesmo branch para login e sessão (E1-03 e E1-04): código por e-mail guardado como HMAC no CacheService, bloqueio de 1 h após 5 erros por e-mail, limite de 3 pedidos por hora, resposta igual para e-mails cadastrados ou não, sessão de 8 h com o hash do token na aba `Sessoes` (resolve também D4) e `exigirSessao_` para as funções públicas de dados. Testes manuais que passaram: login com código; e-mail não cadastrado não recebe código; 5 erros bloqueiam; recarregar mantém a sessão; sair encerra; `ativo` = `FALSE` derruba a sessão; `desbloquearLogins` libera; `usuario_id` gerado automaticamente. Pendente: o teste "token de outro usuário não devolve dados" depende das primeiras funções com dados, e o acesso do web app continua `MYSELF` até ele passar. E1-05 (aceite LGPD e exclusão) é a próxima entrega.
+>
+> **Atualização (10/11/2026):** S1, S2 e S4 corrigidos no branch `fix/setup-e-seguranca`: helpers internos passaram a terminar em `_` (privados para `google.script.run`), `setupAmbiente` recusa quem não é o dono e não devolve a URL da planilha, `incluir_` só aceita arquivos de uma lista, e o manifesto passou para `"access": "MYSELF"`. S5 continua aberto. D5 resolvido: a pasta é criada pelo serviço avançado Drive v3, mantendo o escopo `drive.file`.
 
 ### S1 — Crítico: leitura anônima de propriedades do Script
 
