@@ -81,7 +81,9 @@ function solicitarCodigo(email: string): { mensagem: string } {
 
     const u = buscarUsuarioPorEmail_(e);
     if (!u || !u.ativo) {
-      registrarLog_("", "login_email_nao_cadastrado", "");
+      // O motivo fica só no Log (aba que só o dono vê); a página recebe sempre a mesma mensagem.
+      if (u) registrarLog_(u.usuario_id, "login_email_nao_cadastrado", "inativo");
+      else registrarLog_("", "login_email_nao_cadastrado", "nao_encontrado");
       return { mensagem: MSG_CODIGO_ENVIADO };
     }
 
@@ -154,7 +156,11 @@ function validarCodigo(
 
     cache.removeAll(["cod:" + chave, "err:" + chave]);
     const u = buscarUsuarioPorEmail_(e);
-    if (!u || !u.ativo) throw new Error(MSG_CODIGO_INVALIDO);
+    if (!u || !u.ativo) {
+      // Código certo, mas o cadastro sumiu ou foi desativado depois do envio.
+      registrarLog_(u ? u.usuario_id : "", "login_recusado", u ? "inativo" : "nao_encontrado");
+      throw new Error(MSG_CODIGO_INVALIDO);
+    }
 
     const token = Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
     const hash = hmac_("sessao:" + token);
