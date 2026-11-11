@@ -250,15 +250,23 @@ function buscarUsuarioPorId_(usuarioId: string): UsuarioLogin | null {
 }
 
 function buscarUsuario_(filtro: (u: UsuarioLogin) => boolean): UsuarioLogin | null {
-  const { cab, linhas } = lerAba_("Usuarios");
+  const { aba, cab, linhas } = lerAba_("Usuarios");
   const c = {
     id: coluna_(cab, "usuario_id"),
     email: coluna_(cab, "email"),
     nome: coluna_(cab, "nome"),
     papel: coluna_(cab, "papel"),
     ativo: coluna_(cab, "ativo"),
+    criado: coluna_(cab, "criado_em"),
   };
-  for (const l of linhas) {
+  for (let i = 0; i < linhas.length; i++) {
+    const l = linhas[i];
+    // Linha cadastrada à mão só com e-mail: gera o usuario_id (e a data) e grava.
+    if (!String(l[c.id]).trim() && String(l[c.email]).trim()) {
+      l[c.id] = Utilities.getUuid();
+      aba.getRange(i + 2, c.id + 1).setValue(l[c.id]);
+      if (!String(l[c.criado]).trim()) aba.getRange(i + 2, c.criado + 1).setValue(new Date());
+    }
     const u: UsuarioLogin = {
       usuario_id: String(l[c.id]).trim(),
       email: String(l[c.email]).trim().toLowerCase(),

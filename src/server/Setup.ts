@@ -61,6 +61,30 @@ function cadastrarDonoComoAdmin_(): void {
 }
 
 /**
+ * Libera os logins bloqueados de todos os e-mails da aba Usuarios: apaga
+ * bloqueio, contador de erros, limite de pedidos e código pendente.
+ * Rode pelo editor quando um candidato se bloquear e não puder esperar 1 hora.
+ * (O cache não permite listar quem está bloqueado; por isso libera todos.)
+ */
+function desbloquearLogins(): void {
+  exigirDono_();
+  const { cab, linhas } = lerAba_("Usuarios");
+  const cEmail = coluna_(cab, "email");
+  const chaves: string[] = [];
+  let n = 0;
+  for (const l of linhas) {
+    const e = normalizarEmail_(l[cEmail]);
+    if (!e) continue;
+    const chave = hmac_("email:" + e);
+    chaves.push("bloq:" + chave, "err:" + chave, "ped:" + chave, "cod:" + chave);
+    n++;
+  }
+  if (chaves.length) CacheService.getScriptCache().removeAll(chaves);
+  registrarLog_("", "admin_desbloqueio", `${n} e-mails`);
+  Logger.log(`Logins liberados para ${n} e-mails da aba Usuarios.`);
+}
+
+/**
  * Recusa a execução se quem chama não for a conta dona do script.
  * Num web app "Executar como: eu", o usuário efetivo é o dono e o usuário
  * ativo é o visitante (vazio se anônimo ou de outro domínio).
