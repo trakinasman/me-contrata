@@ -3,7 +3,7 @@
  * carrega usuario_id, e nenhuma função devolve linhas de outro usuário.
  */
 const ESQUEMA: Record<string, string[]> = {
-  Usuarios: ["usuario_id", "email", "nome", "papel", "ativo", "aceite_lgpd_em", "criado_em"],
+  Usuarios: ["usuario_id", "email", "nome", "papel", "ativo", "aceite_lgpd_em", "criado_em", "termo_versao", "pasta_id"],
   Fichas: ["usuario_id", "secao", "item", "texto", "status", "origem", "atualizado_em"],
   Preferencias: ["usuario_id", "titulos", "modalidades", "ufs", "cidades", "aceita_pj", "idiomas", "termos_excluir", "nota_minima"],
   Curriculos: ["curriculo_id", "usuario_id", "tipo", "drive_file_id", "vaga_id", "paginas", "criado_em"],

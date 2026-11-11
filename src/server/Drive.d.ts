@@ -11,5 +11,7 @@ declare namespace DriveV3 {
 declare const Drive: {
   Files: {
     create(recurso: Partial<DriveV3.Arquivo>, blob?: GoogleAppsScript.Base.Blob): DriveV3.Arquivo;
+    /** Apaga de vez (sem passar pela lixeira). */
+    remove(fileId: string): void;
   };
 };

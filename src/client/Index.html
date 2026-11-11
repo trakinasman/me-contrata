@@ -37,6 +37,33 @@
     </form>
   </div>
 
+  <!-- Termo de aceite (LGPD). Mudou o texto? Suba TERMO_VERSAO em Lgpd.ts. -->
+  <div id="tela-termo" class="login" hidden>
+    <div class="card stack termo">
+      <h2>Antes de começar</h2>
+      <p>O me-contrata guardará em locais privados os dados que você cadastrar conosco: sua ficha, preferências, currículos, candidaturas, textos gerados e prints enviados para comprovação.</p>
+      <ul>
+        <li><b>Quem vê:</b> só você, pelo app. Seus dados não são compartilhados com ninguém.</li>
+        <li><b>IA:</b> quando você pede uma análise ou um texto, trechos da sua ficha, do currículo ou dos prints são enviados à API do Claude (Anthropic). A IA só usa itens da ficha que você marcou como confirmados.</li>
+        <li><b>Por quanto tempo:</b> seus dados ficam guardados até você excluí-los. Prints de comprovação são apagados 30 dias após o envio; o resultado da análise fica.</li>
+        <li><b>Exclusão:</b> em Meus dados, "Excluir meus dados" apaga tudo de forma definitiva.</li>
+        <li><b>Dúvidas sobre seus dados:</b> responda a qualquer e-mail de código de acesso do me-contrata.</li>
+      </ul>
+      <label class="linha"><input type="checkbox" id="aceite"> Li e concordo com o uso dos meus dados descrito acima.</label>
+      <p id="erro-termo" class="erro" role="alert"></p>
+      <button class="btn prim" type="button" id="aceitar">Continuar</button>
+      <button class="btn" type="button" id="recusar">Não aceito, sair</button>
+    </div>
+  </div>
+
+  <!-- Depois de excluir os dados -->
+  <div id="tela-excluido" class="login" hidden>
+    <div class="card stack">
+      <h2>Dados excluídos</h2>
+      <p class="muted">Seus dados foram apagados do me-contrata. Para voltar a usar, peça um novo convite.</p>
+    </div>
+  </div>
+
   <!-- Área logada (as telas do protótipo entram nas próximas etapas) -->
   <div id="tela-app" hidden>
     <header class="topo-app">
@@ -56,6 +83,16 @@
         <h2>Login funcionando</h2>
         <p class="muted" id="info-sessao"></p>
       </div>
+      <div class="card stack" style="margin-top:16px">
+        <h2>Meus dados</h2>
+        <p class="muted small">Excluir apaga de forma definitiva sua ficha, currículos, candidaturas, textos e arquivos, e encerra seu acesso. Não dá para desfazer.</p>
+        <div>
+          <label for="confirma-exclusao">Para confirmar, digite EXCLUIR</label>
+          <input type="text" id="confirma-exclusao" autocomplete="off">
+        </div>
+        <p id="erro-exclusao" class="erro" role="alert"></p>
+        <div><button class="btn perigo" type="button" id="excluir">Excluir meus dados</button></div>
+      </div>
     </main>
   </div>
 
@@ -73,7 +110,7 @@
 
     function el(id) { return document.getElementById(id); }
     function mostrar(id) {
-      ["carregando", "tela-email", "tela-codigo", "tela-app"].forEach(function (t) { el(t).hidden = t !== id; });
+      ["carregando", "tela-email", "tela-codigo", "tela-termo", "tela-excluido", "tela-app"].forEach(function (t) { el(t).hidden = t !== id; });
       var foco = { "tela-email": "email", "tela-codigo": "codigo" }[id];
       if (foco) el(foco).focus();
     }
@@ -92,11 +129,13 @@
         .withFailureHandler(function (err) {
           var msg = textoErro(err);
           if (msg.indexOf("SESSAO_INVALIDA") >= 0) { apagarToken(); mostrar("tela-email"); return; }
+          if (msg.indexOf("TERMO_PENDENTE") >= 0) { mostrar("tela-termo"); return; }
           if (falha) falha(msg);
         })[funcao].apply(null, args);
     }
 
     function entrarNoApp(usuario) {
+      if (usuario.precisaAceite) { el("aceite").checked = false; el("erro-termo").textContent = ""; mostrar("tela-termo"); return; }
       el("quem").textContent = usuario.nome || usuario.email;
       var expira = new Date(usuario.expiraEm);
       el("info-sessao").textContent = "Você entrou como " + usuario.email + " (" + usuario.papel +
@@ -129,8 +168,32 @@
       chamar("validarCodigo", [emailAtual, codigo], function (r) {
         ocupado(form, false);
         salvarToken(r.token);
-        entrarNoApp({ nome: r.usuario.nome, email: r.usuario.email, papel: r.usuario.papel, expiraEm: r.expiraEm });
+        entrarNoApp({ nome: r.usuario.nome, email: r.usuario.email, papel: r.usuario.papel, expiraEm: r.expiraEm, precisaAceite: r.precisaAceite });
       }, function (msg) { ocupado(form, false); el("erro-codigo").textContent = msg; el("codigo").select(); });
+    });
+
+    el("aceitar").addEventListener("click", function () {
+      if (!el("aceite").checked) { el("erro-termo").textContent = "Marque a caixa para continuar."; return; }
+      var botao = el("aceitar");
+      botao.disabled = true;
+      chamar("aceitarTermo", [tokenAtual], function () {
+        botao.disabled = false;
+        chamar("sessaoAtual", [tokenAtual], entrarNoApp, function (msg) { el("erro-termo").textContent = msg; });
+      }, function (msg) { botao.disabled = false; el("erro-termo").textContent = msg; });
+    });
+
+    el("recusar").addEventListener("click", function () { el("sair").click(); });
+
+    el("excluir").addEventListener("click", function () {
+      var conf = el("confirma-exclusao").value.trim();
+      el("erro-exclusao").textContent = "";
+      if (conf.toUpperCase() !== "EXCLUIR") { el("erro-exclusao").textContent = "Digite EXCLUIR para confirmar."; return; }
+      var botao = el("excluir");
+      botao.disabled = true;
+      chamar("excluirMeusDados", [tokenAtual, conf], function () {
+        apagarToken();
+        mostrar("tela-excluido");
+      }, function (msg) { botao.disabled = false; el("erro-exclusao").textContent = msg; });
     });
 
     el("outro-email").addEventListener("click", function () { mostrar("tela-email"); });

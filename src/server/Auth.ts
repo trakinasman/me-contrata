@@ -34,12 +34,15 @@ interface UsuarioLogin {
   nome: string;
   papel: string;
   ativo: boolean;
+  termo_versao: string;
 }
 
 interface Sessao {
   usuario_id: string;
   papel: string;
   expira: number;
+  /** Versão do termo LGPD aceita (vazio se ainda não aceitou). */
+  termo: string;
 }
 
 interface EntradaCodigo {
@@ -106,7 +109,12 @@ function solicitarCodigo(email: string): { mensagem: string } {
 function validarCodigo(
   email: string,
   codigo: string,
-): { token: string; expiraEm: string; usuario: { nome: string; email: string; papel: string } } {
+): {
+  token: string;
+  expiraEm: string;
+  precisaAceite: boolean;
+  usuario: { nome: string; email: string; papel: string };
+} {
   const e = normalizarEmail_(email);
   const c = String(codigo ?? "").trim();
   if (!e || !/^\d{6}$/.test(c)) throw new Error(MSG_CODIGO_INVALIDO);
@@ -158,13 +166,14 @@ function validarCodigo(
       expira_em: new Date(expira),
       revogada: false,
     });
-    const sessao: Sessao = { usuario_id: u.usuario_id, papel: u.papel, expira };
+    const sessao: Sessao = { usuario_id: u.usuario_id, papel: u.papel, expira, termo: u.termo_versao };
     cache.put("ses:" + hash, JSON.stringify(sessao), LOGIN.CACHE_SESSAO_S);
     registrarLog_(u.usuario_id, "login_ok", "");
 
     return {
       token,
       expiraEm: new Date(expira).toISOString(),
+      precisaAceite: u.termo_versao !== TERMO_VERSAO,
       usuario: { nome: u.nome, email: u.email, papel: u.papel },
     };
   } finally {
@@ -173,11 +182,23 @@ function validarCodigo(
 }
 
 /** Confere um token guardado no navegador e devolve os dados básicos de quem está logado. */
-function sessaoAtual(token: string): { nome: string; email: string; papel: string; expiraEm: string } {
+function sessaoAtual(token: string): {
+  nome: string;
+  email: string;
+  papel: string;
+  expiraEm: string;
+  precisaAceite: boolean;
+} {
   const s = exigirSessao_(token);
   const u = buscarUsuarioPorId_(s.usuario_id);
   if (!u) throw new Error(ERRO_SESSAO);
-  return { nome: u.nome, email: u.email, papel: u.papel, expiraEm: new Date(s.expira).toISOString() };
+  return {
+    nome: u.nome,
+    email: u.email,
+    papel: u.papel,
+    expiraEm: new Date(s.expira).toISOString(),
+    precisaAceite: u.termo_versao !== TERMO_VERSAO,
+  };
 }
 
 /** Encerra a sessão. Token inválido ou já vencido não gera erro: o resultado é o mesmo. */
@@ -220,7 +241,7 @@ function exigirSessao_(token: unknown): Sessao {
   const u = buscarUsuarioPorId_(linha.usuario_id);
   if (!u || !u.ativo) throw new Error(ERRO_SESSAO);
 
-  const s: Sessao = { usuario_id: u.usuario_id, papel: u.papel, expira: linha.expira };
+  const s: Sessao = { usuario_id: u.usuario_id, papel: u.papel, expira: linha.expira, termo: u.termo_versao };
   const ttl = Math.min(LOGIN.CACHE_SESSAO_S, Math.ceil((s.expira - agora) / 1000));
   cache.put("ses:" + hash, JSON.stringify(s), Math.max(1, ttl));
   return s;
@@ -258,6 +279,7 @@ function buscarUsuario_(filtro: (u: UsuarioLogin) => boolean): UsuarioLogin | nu
     papel: coluna_(cab, "papel"),
     ativo: coluna_(cab, "ativo"),
     criado: coluna_(cab, "criado_em"),
+    termo: cab.indexOf("termo_versao"),
   };
   for (let i = 0; i < linhas.length; i++) {
     const l = linhas[i];
@@ -273,6 +295,7 @@ function buscarUsuario_(filtro: (u: UsuarioLogin) => boolean): UsuarioLogin | nu
       nome: String(l[c.nome]).trim(),
       papel: String(l[c.papel]).trim() || "candidato",
       ativo: verdadeiro_(l[c.ativo]),
+      termo_versao: c.termo >= 0 ? String(l[c.termo]).trim() : "",
     };
     if (u.usuario_id && filtro(u)) return u;
   }

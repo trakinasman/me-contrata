@@ -34,6 +34,23 @@ function anexarLinha_(nome: string, dados: Record<string, unknown>): void {
   aba.appendRow(linha);
 }
 
+/**
+ * Apaga todas as linhas da aba em que a coluna usuario_id é o usuário dado.
+ * Devolve quantas linhas apagou. Abas sem a coluna usuario_id são ignoradas.
+ */
+function apagarLinhasDoUsuario_(nome: string, usuarioId: string): number {
+  const { aba, cab, linhas } = lerAba_(nome);
+  const c = cab.indexOf("usuario_id");
+  if (c < 0 || !usuarioId) return 0;
+  const alvo: number[] = [];
+  linhas.forEach((l, i) => { if (String(l[c]).trim() === usuarioId) alvo.push(i + 2); });
+  if (!alvo.length) return 0;
+  // O Sheets não deixa apagar todas as linhas não congeladas: garante uma vazia no fim.
+  if (aba.getMaxRows() === aba.getLastRow()) aba.insertRowAfter(aba.getLastRow());
+  for (const linha of alvo.reverse()) aba.deleteRow(linha);
+  return alvo.length;
+}
+
 /** Interpreta TRUE/FALSE vindo da planilha, inclusive digitado à mão ("sim", "1"). */
 function verdadeiro_(v: unknown): boolean {
   return v === true || /^(true|verdadeiro|sim|1)$/i.test(String(v).trim());
