@@ -16,8 +16,13 @@ function setupAmbiente(): string {
   }
 
   if (!props.getProperty(PROP.PASTA_RAIZ_ID)) {
-    const pasta = DriveApp.createFolder("me-contrata - arquivos");
-    props.setProperty(PROP.PASTA_RAIZ_ID, pasta.getId());
+    // Serviço avançado do Drive (v3): funciona com o escopo drive.file,
+    // enquanto DriveApp.createFolder exigiria acesso total ao Drive.
+    const pasta = Drive.Files.create({
+      name: "me-contrata - arquivos",
+      mimeType: "application/vnd.google-apps.folder",
+    });
+    props.setProperty(PROP.PASTA_RAIZ_ID, pasta.id);
   }
 
   if (!props.getProperty(PROP.AGENTE_SEGREDO)) {
