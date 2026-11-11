@@ -2,6 +2,8 @@
 
 Assistente web para candidatos a vagas, em Google Apps Script.
 
+> **Andamento:** Etapa 1 do piloto concluída (login, sessão e LGPD). Veja [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md).
+
 > **Aviso de segurança:** o web app está restrito ao dono do script (`"access": "MYSELF"`) até existir login por código com sessão e isolamento por usuário (achado S3 em [ANALISE_PROJETO.md](ANALISE_PROJETO.md)). Não abra o acesso para outras pessoas antes disso.
 
 ## Primeira configuração
