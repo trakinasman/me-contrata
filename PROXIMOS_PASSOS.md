@@ -1,6 +1,6 @@
 # Próximos passos
 
-**Atualizado em:** 11/11/2026, com a E2-01 implementada (branch `etapa2/e2-01-ficha`).
+**Atualizado em:** 12/11/2026, com a E3-01 testada no ambiente real.
 **Fonte:** plano do piloto "Funil de Candidaturas — Skills e piloto da página" (doc no claude.ai) e [`ANALISE_PROJETO.md`](ANALISE_PROJETO.md).
 
 A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 (ficha do candidato)** está em andamento: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
@@ -12,7 +12,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 0 — Preparação | Parcial | P0-02 (projeto, planilha, pasta) e P0-03 (chave da API) feitos. Falta confirmar o teto de gasto mensal no Console da Anthropic. P0-01 (scripts `build_cv_*.js`) e P0-04 (revisar `voice.md`) ficam fora deste repositório |
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
-| 3 — Agente gravando na planilha | **Em andamento** | D2 decidido (catálogo + estado por candidato). E3-01 implementada, falta o teste real com o agente |
+| 3 — Agente gravando na planilha | **Em andamento** | D2 decidido (catálogo + estado por candidato). E3-01 concluída e testada no ambiente real (12/11/2026). Próxima: E3-02 |
 | 4 a 8 — Perfil, vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -42,6 +42,17 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 **D2 decidido (11/11/2026): catálogo + estado por candidato.** A aba `Vagas` é o catálogo, uma linha por anúncio, com `vaga_id = "<fonte>:<id na fonte>"` (ex.: `gupy:12781855`) e sem `usuario_id`. Nota, motivos e descarte de cada candidato ficam em `VagasCandidato` (`usuario_id + vaga_id`). A página nunca lista o catálogo inteiro, só as vagas com linha do candidato. Na exclusão de dados (LGPD) saem as linhas de `VagasCandidato`; o catálogo é anúncio público e fica.
 
 **E3-01 implementada (11/11/2026):** `src/server/Agente.ts` (`doPost`) e `agente_vagas/enviar_me_contrata.py` no projeto `linkedin`, chamado no fim do `buscar_vagas.py`. Controles do S5: o segredo não trafega (assinatura HMAC-SHA256 de `ts.nonce.dados`), janela de 5 min e nonce de uso único contra repetição, até 1 MB por envio, 300 vagas por envio e 60 envios por hora, validação e corte de cada campo, link só `https`, recusas com resposta genérica e motivo na aba `Log` sem o segredo. Vaga que o candidato já tem, inclusive descartada, não é recriada. Testada com Apps Script simulado (17 casos). Falta: rodar `setupAmbiente()` (cria `VagasCandidato` e refaz a aba `Vagas`, que estava vazia), `npm run deploy`, configurar o `me_contrata_local.json` do agente (README) e rodar o agente de verdade. A dedup por título+empresa entre portais fica para a E3-05.
+
+**E3-01 concluída (12/11/2026):** `setupAmbiente()` rodado, versão @6 publicada (`npm run deploy`) e `me_contrata_local.json` configurado em `C:\Github\linkedin\agente_vagas\`. Resultado no ambiente real:
+- 3 envios do agente: o 1º gravou 41 vagas; o 2º, com as mesmas vagas, não duplicou nada (`ja_tinha 41`); o 3º trouxe só as 16 novas. Catálogo com 57 vagas de Gupy, Catho, InHire, InfoJobs e Sólides, todas com linha em `VagasCandidato`.
+- POST sem assinatura e com assinatura inventada: os dois recusados com `nao_autorizado`, motivo no `Log` (`formato`, `assinatura`) e nenhuma vaga gravada.
+
+Observado para as próximas entregas:
+- A mesma vaga em portais diferentes (ex.: Orsegups na Catho e no InfoJobs; RHESERVA na Catho e no InfoJobs; Auten Energy na Catho e na Sólides): E3-05.
+- `local` sem padrão ("BR", "Todo Brasil", CEP, cidade fora de SC): E3-03.
+- `publicada_em` mistura data com hora ISO (Gupy) e só data (demais portais): padronizar no `doPost`.
+- Linha do `Log` de 11/11 15:45:36 com a URL da planilha na coluna `evento`: nenhum código grava isso (todas as chamadas de `registrarLog_` usam eventos fixos), então foi colada à mão na planilha. Pode ser apagada.
+- Cópias do `me_contrata_local.json` (com o segredo) apareceram soltas neste repositório e foram apagadas; o `.gitignore` agora ignora `*_local.json`.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
