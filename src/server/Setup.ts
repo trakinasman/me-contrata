@@ -111,6 +111,7 @@ function exigirDono_(): void {
 function regraEspecial_(
   tipo: "caixa" | "nota" | { varios: string },
   celula: string,
+  sep = ",",
 ): GoogleAppsScript.Spreadsheet.DataValidation {
   const b = SpreadsheetApp.newDataValidation().setAllowInvalid(false);
   if (tipo === "caixa") return b.requireCheckbox().build();
@@ -120,8 +121,9 @@ function regraEspecial_(
   const opcoes = LISTAS[tipo.varios].map((v) => v.toLowerCase()).join("|");
   const regex = `^\\s*(${opcoes})(\\s*,\\s*(${opcoes}))*\\s*$`;
   return b
-    // Fórmulas gravadas pela API usam a sintaxe en-US (vírgula), qualquer que seja a localidade.
-    .requireFormulaSatisfied(`=OR(ISBLANK(${celula}),REGEXMATCH(LOWER(${celula}),"${regex}"))`)
+    // O separador de argumentos depende da localidade da planilha (vírgula em
+    // en-US, ponto e vírgula em pt-BR); setupPlanilha_ tenta os dois.
+    .requireFormulaSatisfied(`=OR(ISBLANK(${celula})${sep}REGEXMATCH(LOWER(${celula})${sep}"${regex}"))`)
     .setHelpText("Um ou mais valores separados por vírgula: " + LISTAS[tipo.varios].join(", "))
     .build();
 }
@@ -154,7 +156,13 @@ function setupPlanilha_(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
       const idx = cabecalho.indexOf(coluna);
       if (idx < 0) continue;
       const faixa = aba.getRange(2, idx + 1, aba.getMaxRows() - 1, 1);
-      faixa.setDataValidation(regraEspecial_(tipo, faixa.getCell(1, 1).getA1Notation()));
+      const celula = faixa.getCell(1, 1).getA1Notation();
+      try {
+        faixa.setDataValidation(regraEspecial_(tipo, celula, ","));
+      } catch (e) {
+        // Planilha em localidade que separa argumentos com ";" (ex.: pt-BR).
+        faixa.setDataValidation(regraEspecial_(tipo, celula, ";"));
+      }
     }
   }
   // Remove a aba padrão criada com a planilha.
