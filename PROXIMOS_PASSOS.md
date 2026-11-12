@@ -1,6 +1,6 @@
 # Próximos passos
 
-**Atualizado em:** 12/11/2026, com a E3-01 testada no ambiente real.
+**Atualizado em:** 12/11/2026, com a E3-02 concluída e testada no ambiente real.
 **Fonte:** plano do piloto "Funil de Candidaturas — Skills e piloto da página" (doc no claude.ai) e [`ANALISE_PROJETO.md`](ANALISE_PROJETO.md).
 
 A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 (ficha do candidato)** está em andamento: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
@@ -12,7 +12,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 0 — Preparação | Parcial | P0-02 (projeto, planilha, pasta) e P0-03 (chave da API) feitos. Falta confirmar o teto de gasto mensal no Console da Anthropic. P0-01 (scripts `build_cv_*.js`) e P0-04 (revisar `voice.md`) ficam fora deste repositório |
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
-| 3 — Agente gravando na planilha | **Em andamento** | D2 decidido (catálogo + estado por candidato). E3-01 concluída e testada no ambiente real (12/11/2026). Próxima: E3-02 |
+| 3 — Agente gravando na planilha | **Em andamento** | D2 decidido (catálogo + estado por candidato). E3-01 e E3-02 concluídas e testadas no ambiente real (12/11/2026). Próxima: E3-03 |
 | 4 a 8 — Perfil, vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -53,6 +53,26 @@ Observado para as próximas entregas:
 - `publicada_em` mistura data com hora ISO (Gupy) e só data (demais portais): padronizar no `doPost`.
 - Linha do `Log` de 11/11 15:45:36 com a URL da planilha na coluna `evento`: nenhum código grava isso (todas as chamadas de `registrarLog_` usam eventos fixos), então foi colada à mão na planilha. Pode ser apagada.
 - Cópias do `me_contrata_local.json` (com o segredo) apareceram soltas neste repositório e foram apagadas; o `.gitignore` agora ignora `*_local.json`.
+
+**E3-02 concluída (12/11/2026):** nova ação assinada `preferencias` no `doPost` (`src/server/Agente.ts`): devolve as preferências de cada usuário ativo que aceitou o termo e tem linha em `Preferencias` (só `usuario_id` e preferências; listas limpas, modalidade e UF só com valores válidos; nota mínima vazia = 50). O envio de vagas passou a recusar usuário sem o termo aceito. Versão @7 publicada.
+
+No agente (`C:\Github\linkedin\agente_vagas\`, fora do Git): coleta uma vez; nota, seleção e envio uma vez por usuário (erro de um não para os outros). Saíram do `config.json` as cidades preferidas e a nota mínima; entrou `penalidade_pj` (30). O `usuario_id` do `me_contrata_local.json` passou a ser opcional e indica o dono do relatório HTML local; a última cópia das preferências do dono fica em `dados/preferencias_dono.json` para o relatório funcionar se o web app estiver fora. `python enviar_me_contrata.py` virou teste de conexão (lê as preferências, não grava).
+
+| Preferência | Efeito na nota |
+|---|---|
+| `cidades` | +15 para vaga nessas cidades |
+| `modalidades` | modalidade fora da lista: −35 (vazia = todas) |
+| `idiomas` | quem fala inglês/espanhol não perde os 30 pontos de "exige idioma" |
+| `aceita_pj` | desmarcado: vaga que menciona PJ perde 30 (inclui "CLT ou PJ") |
+| `termos_excluir` | soma à lista geral de exclusão do título |
+| `nota_minima` | substitui o 50 fixo (empresas-alvo seguem com 30) |
+| `titulos`, `ufs` | ainda não usados: E3-03 e E3-04 |
+
+Testes: com as preferências equivalentes às antigas, 216 combinações de vaga deram a mesma nota da versão anterior (só o texto dos motivos mudou: "cidade preferida" / "fora das cidades preferidas"). Execução real: 3.172 vagas analisadas, preferências de 1 usuário (o de teste, sem preferências, ficou de fora), 69 selecionadas para o Roberto, 17 novas e 52 já existentes. Das 17, 12 já tinham sido coletadas antes e só agora passaram da nota porque o Roberto marcou inglês (Radix, CARV Group, Atlas Governance).
+
+Preferências do Roberto preenchidas na planilha: remoto, híbrido e presencial; SC; 7 cidades da Grande Florianópolis; aceita PJ; inglês; nota mínima 50.
+
+Observado: 4 vagas presenciais fora de SC (São Paulo, Belo Horizonte, Brasília) entraram com nota exatamente 50, como já acontecia antes. A E3-03 (UF por vaga) deve resolver; até lá, subir a `nota_minima` para 55 corta esses casos.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
