@@ -4,6 +4,7 @@
  */
 const ESQUEMA: Record<string, string[]> = {
   Usuarios: ["usuario_id", "email", "nome", "papel", "ativo", "aceite_lgpd_em", "criado_em", "termo_versao", "pasta_id"],
+  // Fichas: uma linha por item; `item` é o ID do item (UUID).
   Fichas: ["usuario_id", "secao", "item", "texto", "status", "origem", "atualizado_em"],
   Preferencias: ["usuario_id", "titulos", "modalidades", "ufs", "cidades", "aceita_pj", "idiomas", "termos_excluir", "nota_minima"],
   Curriculos: ["curriculo_id", "usuario_id", "tipo", "drive_file_id", "vaga_id", "paginas", "criado_em"],
@@ -27,6 +28,7 @@ const LISTAS: Record<string, string[]> = {
   tipo_curriculo: ["base", "linkedin", "adaptado"],
   modalidade: ["remoto", "hibrido", "presencial"],
   secao_ficha: ["quem_sou", "como_soo", "palavras_usa", "palavras_evita", "posicoes", "fora_dos_limites", "provas"],
+  uf: ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"],
 };
 
 /** Validações: aba -> coluna -> lista. */
@@ -37,4 +39,21 @@ const VALIDACOES: Record<string, Record<string, string>> = {
   Vagas: { modalidade: "modalidade" },
   Candidaturas: { status: "status_candidatura" },
   Recomendacoes: { status: "status_recomendacao" },
+};
+
+/**
+ * Validações que não são lista simples: aba -> coluna -> regra.
+ * "caixa" = caixa de seleção (TRUE/FALSE); "nota" = número de 0 a 100;
+ * { varios: lista } = um ou mais valores da lista separados por vírgula.
+ * Validação de célula ajuda quem edita a planilha à mão, mas não é controle
+ * de segurança: as funções do servidor validam de novo o que gravam.
+ */
+const VALIDACOES_ESPECIAIS: Record<string, Record<string, "caixa" | "nota" | { varios: string }>> = {
+  Usuarios: { ativo: "caixa" },
+  Preferencias: {
+    ufs: { varios: "uf" },
+    modalidades: { varios: "modalidade" },
+    aceita_pj: "caixa",
+    nota_minima: "nota",
+  },
 };

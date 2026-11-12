@@ -81,7 +81,9 @@ function solicitarCodigo(email: string): { mensagem: string } {
 
     const u = buscarUsuarioPorEmail_(e);
     if (!u || !u.ativo) {
-      registrarLog_("", "login_email_nao_cadastrado", "");
+      // O motivo fica só no Log (aba que só o dono vê); a página recebe sempre a mesma mensagem.
+      if (u) registrarLog_(u.usuario_id, "login_email_nao_cadastrado", "inativo");
+      else registrarLog_("", "login_email_nao_cadastrado", "nao_encontrado");
       return { mensagem: MSG_CODIGO_ENVIADO };
     }
 
@@ -154,7 +156,11 @@ function validarCodigo(
 
     cache.removeAll(["cod:" + chave, "err:" + chave]);
     const u = buscarUsuarioPorEmail_(e);
-    if (!u || !u.ativo) throw new Error(MSG_CODIGO_INVALIDO);
+    if (!u || !u.ativo) {
+      // Código certo, mas o cadastro sumiu ou foi desativado depois do envio.
+      registrarLog_(u ? u.usuario_id : "", "login_recusado", u ? "inativo" : "nao_encontrado");
+      throw new Error(MSG_CODIGO_INVALIDO);
+    }
 
     const token = Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
     const hash = hmac_("sessao:" + token);
@@ -213,6 +219,37 @@ function sair(token: string): { ok: boolean } {
     registrarLog_(linha.usuario_id, "logout", "");
   }
   return { ok: true };
+}
+
+/**
+ * Apaga da aba Sessoes as linhas vencidas ou revogadas. Roda todo dia pelo
+ * gatilho que setupAmbiente() cria; pode rodar à mão pelo editor.
+ * Pública só para o gatilho achar a função; quem não for o dono é recusado.
+ */
+function limparSessoesVencidas(): void {
+  exigirDono_();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const { aba, cab, linhas } = lerAba_("Sessoes");
+    const cExpira = coluna_(cab, "expira_em");
+    const cRevogada = coluna_(cab, "revogada");
+    const agora = Date.now();
+    const alvo: number[] = [];
+    linhas.forEach((l, i) => {
+      const expira = new Date(l[cExpira] as string | Date).getTime();
+      if (verdadeiro_(l[cRevogada]) || isNaN(expira) || expira <= agora) alvo.push(i + 2);
+    });
+    if (!alvo.length) return;
+    // O Sheets não deixa apagar todas as linhas não congeladas: garante uma vazia no fim.
+    if (aba.getMaxRows() === aba.getLastRow()) aba.insertRowAfter(aba.getLastRow());
+    // De baixo para cima: apagar uma linha não muda o número das que estão acima,
+    // e sessões novas entram sempre no fim.
+    for (const n of alvo.reverse()) aba.deleteRow(n);
+    registrarLog_("", "sessoes_limpas", String(alvo.length));
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ---------- Uso interno ----------

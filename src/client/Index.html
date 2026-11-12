@@ -64,7 +64,7 @@
     </div>
   </div>
 
-  <!-- Área logada (as telas do protótipo entram nas próximas etapas) -->
+  <!-- Área logada (as demais telas do protótipo entram nas próximas etapas) -->
   <div id="tela-app" hidden>
     <header class="topo-app">
       <span class="marca">me-contrata</span>
@@ -72,18 +72,42 @@
       <button class="btn mini" type="button" id="sair">Sair</button>
     </header>
     <main class="wrap">
-      <nav>
-        <a href="#inicio">Início</a>
-        <a href="#vagas">Vagas</a>
-        <a href="#funil">Funil</a>
-        <a href="#recomendacoes">Recomendações</a>
-        <a href="#perfil">Perfil</a>
+      <nav id="menu">
+        <a href="#inicio" data-pag="inicio">Início</a>
+        <a href="#vagas" data-pag="vagas">Vagas</a>
+        <a href="#funil" data-pag="funil">Funil</a>
+        <a href="#recomendacoes" data-pag="recomendacoes">Recomendações</a>
+        <a href="#perfil" data-pag="perfil">Perfil</a>
       </nav>
-      <div class="card">
-        <h2>Login funcionando</h2>
-        <p class="muted" id="info-sessao"></p>
-      </div>
-      <div class="card stack" style="margin-top:16px">
+
+      <section id="pag-inicio" class="stack">
+        <div class="card stack">
+          <h2>Bem-vindo</h2>
+          <p class="muted" id="info-sessao"></p>
+          <p>Comece pela sua <a href="#perfil/ficha">ficha</a>: é dela que saem todos os textos.</p>
+        </div>
+      </section>
+
+      <section id="pag-embreve" hidden>
+        <div class="card"><p class="muted">Esta tela chega nas próximas etapas.</p></div>
+      </section>
+
+      <section id="pag-perfil" class="stack" hidden>
+        <h1>Perfil</h1>
+        <div class="tabs">
+          <a href="#perfil/ficha" data-aba="ficha">Ficha</a>
+          <a href="#perfil/dados" data-aba="dados">Meus dados</a>
+        </div>
+
+        <div id="aba-ficha" class="stack">
+          <p class="muted small">A IA só usa nos seus textos os itens <b>confirmados</b>. Itens <b>proibidos</b> ela nunca afirma.</p>
+          <p id="aviso-ficha" class="aviso" hidden></p>
+          <p id="msg-ficha" class="msg" role="status" aria-live="polite"></p>
+          <p id="erro-ficha" class="erro" role="alert"></p>
+          <div id="secoes-ficha" class="stack"></div>
+        </div>
+
+        <div id="aba-dados" class="card stack" hidden>
         <h2>Meus dados</h2>
         <p class="muted small">Excluir apaga de forma definitiva sua ficha, currículos, candidaturas, textos e arquivos, e encerra seu acesso. Não dá para desfazer.</p>
         <div>
@@ -92,7 +116,8 @@
         </div>
         <p id="erro-exclusao" class="erro" role="alert"></p>
         <div><button class="btn perigo" type="button" id="excluir">Excluir meus dados</button></div>
-      </div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -106,7 +131,11 @@
     // o login continua valendo até recarregar a página.
     function lerToken() { try { return localStorage.getItem(CHAVE); } catch (e) { return null; } }
     function salvarToken(t) { tokenAtual = t; try { localStorage.setItem(CHAVE, t); } catch (e) {} }
-    function apagarToken() { tokenAtual = null; try { localStorage.removeItem(CHAVE); } catch (e) {} }
+    // Sem sessão, nada do usuário anterior pode continuar na memória da página.
+    function apagarToken() {
+      tokenAtual = null; ficha = null; editando = null;
+      try { localStorage.removeItem(CHAVE); } catch (e) {}
+    }
 
     function el(id) { return document.getElementById(id); }
     function mostrar(id) {
@@ -141,6 +170,206 @@
       el("info-sessao").textContent = "Você entrou como " + usuario.email + " (" + usuario.papel +
         "). A sessão vale até " + expira.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + ".";
       mostrar("tela-app");
+      rotear();
+    }
+
+    // ---------- Navegação por hash ----------
+    // A página roda num iframe do Apps Script com <base target="_top">: um link
+    // "#perfil" levaria a janela inteira para o endereço do iframe (tela branca).
+    // Por isso os links internos são interceptados e a rota fica em rotaAtual;
+    // google.script.history atualiza o endereço da janela e o botão Voltar.
+    var PAGINAS = ["inicio", "embreve", "perfil"];
+    var rotaAtual = "";
+    function irPara(rota) {
+      rotaAtual = rota;
+      try { google.script.history.push(null, null, rota); } catch (e) {}
+      rotear();
+    }
+    document.addEventListener("click", function (ev) {
+      var a = ev.target.closest ? ev.target.closest('a[href^="#"]') : null;
+      if (!a) return;
+      ev.preventDefault();
+      irPara(a.getAttribute("href").slice(1));
+    });
+    google.script.history.setChangeHandler(function (e) {
+      rotaAtual = (e.location && e.location.hash) || "";
+      rotear();
+    });
+    google.script.url.getLocation(function (loc) {
+      rotaAtual = loc.hash || "";
+      rotear();
+    });
+    function rotear() {
+      if (el("tela-app").hidden) return;
+      var partes = rotaAtual.replace(/^#/, "").split("/");
+      var pag = partes[0] || "inicio";
+      var visivel = PAGINAS.indexOf(pag) >= 0 && pag !== "embreve" ? pag : "embreve";
+      PAGINAS.forEach(function (p) { el("pag-" + p).hidden = p !== visivel; });
+      Array.prototype.forEach.call(document.querySelectorAll("#menu a"), function (a) {
+        a.classList.toggle("ativo", a.getAttribute("data-pag") === pag);
+      });
+      if (visivel !== "perfil") return;
+      var aba = partes[1] === "dados" ? "dados" : "ficha";
+      el("aba-ficha").hidden = aba !== "ficha";
+      el("aba-dados").hidden = aba !== "dados";
+      Array.prototype.forEach.call(document.querySelectorAll(".tabs a"), function (a) {
+        a.classList.toggle("ativo", a.getAttribute("data-aba") === aba);
+      });
+      if (aba === "ficha" && !ficha) carregarFicha();
+    }
+
+    // ---------- Ficha (E2-01) ----------
+    // Todo texto da ficha entra na página por textContent (via h), nunca por innerHTML.
+    var ficha = null;      // última ficha recebida do servidor
+    var editando = null;   // id do item em edição, ou "novo:<secao>"
+    var MAX_TEXTO = 2000;
+    var STATUS_FICHA = {
+      confirmado: { nome: "confirmado", classe: "ok", opcao: "Confirmado: a IA pode usar" },
+      a_confirmar: { nome: "a confirmar", classe: "warn", opcao: "A confirmar: a IA não usa" },
+      proibido: { nome: "proibido", classe: "bad", opcao: "Proibido: a IA nunca afirma" }
+    };
+    var timerMsg = null;
+
+    // Cria um elemento. Filhos que não são nós viram texto; atributos on* viram eventos.
+    function h(tag, attrs) {
+      var no = document.createElement(tag);
+      Object.keys(attrs || {}).forEach(function (k) {
+        var v = attrs[k];
+        if (v == null || v === false) return;
+        if (k.indexOf("on") === 0) no.addEventListener(k.slice(2), v);
+        else if (k === "class") no.className = v;
+        else no.setAttribute(k, v === true ? "" : v);
+      });
+      (function anexar(lista) {
+        lista.forEach(function (f) {
+          if (f == null || f === false) return;
+          if (Array.isArray(f)) anexar(f);
+          else no.appendChild(f instanceof Node ? f : document.createTextNode(String(f)));
+        });
+      })(Array.prototype.slice.call(arguments, 2));
+      return no;
+    }
+
+    function avisarFicha(texto) {
+      el("msg-ficha").textContent = texto;
+      clearTimeout(timerMsg);
+      timerMsg = setTimeout(function () { el("msg-ficha").textContent = ""; }, 4000);
+    }
+
+    function carregarFicha() {
+      el("erro-ficha").textContent = "";
+      el("secoes-ficha").replaceChildren(h("p", { class: "muted" }, "Carregando a ficha…"));
+      chamar("listarFicha", [tokenAtual], function (f) { ficha = f; desenharFicha(); }, function (msg) {
+        el("secoes-ficha").replaceChildren(
+          h("p", { class: "erro" }, msg),
+          h("button", { class: "btn", type: "button", onclick: carregarFicha }, "Tentar de novo"));
+      });
+    }
+
+    // Salva (cria ou altera) um item. `botoes` ficam desativados enquanto o servidor responde.
+    function salvarItem(dados, botoes, ok, falha) {
+      botoes.forEach(function (b) { b.disabled = true; });
+      chamar("salvarItemFicha", [tokenAtual, dados], function (f) {
+        ficha = f;
+        editando = null;
+        desenharFicha();
+        if (ok) ok();
+      }, function (msg) {
+        botoes.forEach(function (b) { b.disabled = false; });
+        (falha || function (m) { el("erro-ficha").textContent = m; })(msg);
+      });
+    }
+
+    function mudarStatus(it, status, botoes) {
+      el("erro-ficha").textContent = "";
+      salvarItem({ id: it.id, secao: it.secao, texto: it.texto, status: status }, botoes, function () {
+        avisarFicha(status === "confirmado" ? "Item confirmado. A IA já pode usar." :
+          status === "proibido" ? "Marcado como proibido. A IA nunca vai afirmar isso." : "Item volta para revisão.");
+      });
+    }
+
+    function excluirItem(it, botoes) {
+      if (!window.confirm("Excluir este item da ficha? Não dá para desfazer.")) return;
+      el("erro-ficha").textContent = "";
+      botoes.forEach(function (b) { b.disabled = true; });
+      chamar("excluirItemFicha", [tokenAtual, it.id], function (f) {
+        ficha = f;
+        desenharFicha();
+        avisarFicha("Item excluído.");
+      }, function (msg) {
+        botoes.forEach(function (b) { b.disabled = false; });
+        el("erro-ficha").textContent = msg;
+      });
+    }
+
+    function desenharFicha() {
+      var pend = 0;
+      ficha.secoes.forEach(function (s) { s.itens.forEach(function (it) { if (it.status === "a_confirmar") pend++; }); });
+      el("aviso-ficha").hidden = !pend;
+      el("aviso-ficha").textContent = pend === 1
+        ? "1 item está a confirmar. A IA não usa esse item até você confirmar."
+        : pend + " itens estão a confirmar. A IA não usa esses itens até você confirmar.";
+      el("secoes-ficha").replaceChildren.apply(el("secoes-ficha"), ficha.secoes.map(desenharSecao));
+      var campo = document.querySelector("#secoes-ficha textarea");
+      if (campo) campo.focus();
+    }
+
+    function desenharSecao(sec) {
+      var novo = editando === "novo:" + sec.id;
+      return h("div", { class: "card" },
+        h("div", { class: "row entre" },
+          h("h3", {}, sec.nome),
+          novo ? null : h("button", { class: "btn mini", type: "button", onclick: function () { editando = "novo:" + sec.id; desenharFicha(); } }, "+ Item")),
+        h("p", { class: "small muted dica" }, sec.dica),
+        sec.itens.length || novo ? null : h("p", { class: "small muted" }, "Nenhum item ainda."),
+        sec.itens.map(function (it) { return editando === it.id ? formItem(sec, it) : linhaItem(it); }),
+        novo ? formItem(sec, null) : null);
+    }
+
+    function linhaItem(it) {
+      var st = STATUS_FICHA[it.status];
+      var botoes = [];
+      function botao(rotulo, classe, fn) {
+        var b = h("button", { class: "btn mini " + classe, type: "button", onclick: function () { fn(botoes); } }, rotulo);
+        botoes.push(b);
+        return b;
+      }
+      var acoes = [];
+      if (it.status === "a_confirmar") {
+        acoes.push(botao("Confirmar", "", function (bs) { mudarStatus(it, "confirmado", bs); }));
+        acoes.push(botao("Não é verdade", "perigo", function (bs) { mudarStatus(it, "proibido", bs); }));
+      }
+      acoes.push(botao("Editar", "", function () { editando = it.id; el("erro-ficha").textContent = ""; desenharFicha(); }));
+      acoes.push(botao("Excluir", "", function (bs) { excluirItem(it, bs); }));
+      return h("div", { class: "item-ficha" + (it.status === "a_confirmar" ? " destaque" : "") },
+        h("div", { class: "t" }, it.texto),
+        h("span", { class: "chip " + st.classe }, st.nome),
+        h("div", { class: "row acoes" }, acoes));
+    }
+
+    function formItem(sec, it) {
+      var texto = h("textarea", { rows: "3", maxlength: String(MAX_TEXTO), "aria-label": "Texto do item" });
+      texto.value = it ? it.texto : "";
+      var status = h("select", { "aria-label": "Status do item" },
+        Object.keys(STATUS_FICHA).map(function (k) { return h("option", { value: k }, STATUS_FICHA[k].opcao); }));
+      // Item escrito pelo próprio candidato já nasce confirmado.
+      status.value = it ? it.status : "confirmado";
+      var erro = h("p", { class: "erro", role: "alert" });
+      var salvar = h("button", { class: "btn prim mini", type: "submit" }, it ? "Salvar" : "Adicionar");
+      var cancelar = h("button", { class: "btn mini", type: "button", onclick: function () { editando = null; desenharFicha(); } }, "Cancelar");
+      return h("form", {
+        class: "item-ficha form-item stack",
+        novalidate: true,
+        onsubmit: function (ev) {
+          ev.preventDefault();
+          var t = texto.value.trim();
+          if (!t) { erro.textContent = "Escreva o texto do item."; return; }
+          if (t.length > MAX_TEXTO) { erro.textContent = "O item passa de " + MAX_TEXTO + " caracteres."; return; }
+          salvarItem({ id: it ? it.id : "", secao: sec.id, texto: t, status: status.value }, [salvar, cancelar, texto, status],
+            function () { avisarFicha(it ? "Item salvo." : "Item adicionado."); },
+            function (msg) { erro.textContent = msg; });
+        }
+      }, texto, status, erro, h("div", { class: "row" }, salvar, cancelar));
     }
 
     el("form-email").addEventListener("submit", function (ev) {

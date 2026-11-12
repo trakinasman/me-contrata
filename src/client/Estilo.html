@@ -2,11 +2,13 @@
   :root {
     --bg: #f5f6f8; --surface: #ffffff; --fg: #18202e; --muted: #5e6878; --border: #dde2ea;
     --accent: #1f3864; --accent-fg: #ffffff; --bad: #b42318;
+    --ok: #1a7f37; --warn: #9a6700; --warn-soft: #fff4d6; --surface-2: #eef1f5;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #11151c; --surface: #181e28; --fg: #e5e9f0; --muted: #98a2b3; --border: #2c3546;
       --accent: #9db8ea; --accent-fg: #11151c; --bad: #f59a92;
+      --ok: #6fd08c; --warn: #e3b341; --warn-soft: #2d2614; --surface-2: #222a37;
     }
   }
   * { box-sizing: border-box; }
@@ -39,4 +41,23 @@
   .topo-app .marca { font-weight: 700; color: var(--accent); margin-right: auto; }
   nav { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 16px; }
   nav a { color: var(--accent); }
+  nav a.ativo { font-weight: 700; text-decoration: none; }
+  h3 { margin: 0; font-size: 1rem; }
+  textarea, select { font: inherit; color: inherit; width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  textarea { resize: vertical; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .row.entre { justify-content: space-between; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+  .tabs a { padding: 8px 12px; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; }
+  .tabs a.ativo { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .aviso { margin: 0; padding: 10px 14px; border-radius: 8px; background: var(--warn-soft); color: var(--fg); border: 1px solid var(--warn); }
+  .msg { margin: 0; min-height: 1.2em; font-size: .9rem; color: var(--ok); }
+  .dica { margin: 2px 0 6px; }
+  .chip { font-size: .78rem; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+  .chip.ok { color: var(--ok); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
+  .item-ficha { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border); }
+  .item-ficha .t { flex: 1 1 240px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .item-ficha.destaque { background: var(--warn-soft); margin: 0 -20px; padding: 10px 20px; }
+  .item-ficha.form-item { display: flex; flex-direction: column; align-items: stretch; }
+  .acoes { gap: 6px; }
 </style>

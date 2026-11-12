@@ -27,11 +27,23 @@ function coluna_(cab: string[], nome: string): number {
   return i;
 }
 
-/** Acrescenta uma linha montada pelos nomes das colunas; colunas não informadas ficam vazias. */
+/**
+ * Acrescenta uma linha montada pelos nomes das colunas; colunas não informadas ficam vazias.
+ * Textos passam por celulaTexto_, para nunca virarem fórmula.
+ */
 function anexarLinha_(nome: string, dados: Record<string, unknown>): void {
   const aba = abaObrigatoria_(nome);
-  const linha = cabecalho_(aba).map((c) => (c in dados ? dados[c] : ""));
+  const linha = cabecalho_(aba).map((c) => (c in dados ? celulaTexto_(dados[c]) : ""));
   aba.appendRow(linha);
+}
+
+/**
+ * Texto que começa com = + - @ seria lido pelo Sheets como fórmula (e uma
+ * fórmula como IMPORTXML roda com a conta dona da planilha). O apóstrofo na
+ * frente guarda o valor como texto e não aparece na leitura. Não-textos passam direto.
+ */
+function celulaTexto_(v: unknown): unknown {
+  return typeof v === "string" && /^[=+\-@]/.test(v) ? "'" + v : v;
 }
 
 /**
