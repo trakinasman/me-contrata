@@ -6,7 +6,8 @@
     "build": "node scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "push": "npm run build && clasp push --force",
-    "deploy": "npm run push && clasp deploy",
+    "deploy": "npm run push && clasp deploy -i AKfycbxsMmSZsEU3Q89EunvQqKwij6C_vmMEvo9Xh_vNK0og4Kl1UPGJdnTSP89aHdiw_JoUbw",
+    "deploy:nova": "npm run push && clasp deploy",
     "open": "clasp open-script",
     "logs": "clasp tail-logs"
   },
