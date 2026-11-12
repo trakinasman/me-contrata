@@ -38,6 +38,17 @@ function anexarLinha_(nome: string, dados: Record<string, unknown>): void {
 }
 
 /**
+ * Acrescenta várias linhas de uma vez (uma escrita só), montadas pelos nomes das colunas.
+ */
+function anexarLinhas_(nome: string, lista: Record<string, unknown>[]): void {
+  if (!lista.length) return;
+  const aba = abaObrigatoria_(nome);
+  const cab = cabecalho_(aba);
+  const linhas = lista.map((dados) => cab.map((c) => (c in dados ? celulaTexto_(dados[c]) : "")));
+  aba.getRange(aba.getLastRow() + 1, 1, linhas.length, cab.length).setValues(linhas);
+}
+
+/**
  * Texto que começa com = + - @ seria lido pelo Sheets como fórmula (e uma
  * fórmula como IMPORTXML roda com a conta dona da planilha). O apóstrofo na
  * frente guarda o valor como texto e não aparece na leitura. Não-textos passam direto.

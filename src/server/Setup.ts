@@ -91,6 +91,20 @@ function desbloquearLogins(): void {
  * Num web app "Executar como: eu", o usuário efetivo é o dono e o usuário
  * ativo é o visitante (vazio se anônimo ou de outro domínio).
  */
+/**
+ * Aba sem nenhuma linha de dados cujo cabeçalho tem colunas que saíram do
+ * ESQUEMA: refaz do zero (cabeçalho e validações), já que não há o que perder.
+ * Com dados, nunca mexe: colunas novas só são acrescentadas no fim.
+ */
+function redefinirAbaVaziaSeMudou_(aba: GoogleAppsScript.Spreadsheet.Sheet, colunas: string[]): void {
+  if (aba.getLastColumn() === 0 || aba.getLastRow() > 1) return;
+  const atual = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(String).filter((c) => c);
+  if (atual.every((c) => colunas.includes(c))) return;
+  aba.getRange(1, 1, aba.getMaxRows(), aba.getMaxColumns()).clearDataValidations();
+  aba.clear();
+  Logger.log(`Aba ${aba.getName()} estava vazia e com colunas antigas: cabeçalho refeito.`);
+}
+
 /** Gatilho diário (por volta das 3h) de limparSessoesVencidas. Idempotente: não duplica. */
 function criarGatilhoLimpeza_(): void {
   const existe = ScriptApp.getProjectTriggers().some((t) => t.getHandlerFunction() === "limparSessoesVencidas");
@@ -132,6 +146,7 @@ function regraEspecial_(
 function setupPlanilha_(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
   for (const [nome, colunas] of Object.entries(ESQUEMA)) {
     const aba = ss.getSheetByName(nome) ?? ss.insertSheet(nome);
+    redefinirAbaVaziaSeMudou_(aba, colunas);
     const atual = aba.getLastColumn() > 0
       ? aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(String)
       : [];
