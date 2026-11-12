@@ -1,6 +1,12 @@
 /**
- * Modelo de dados: uma aba por entidade. Toda aba (exceto Rubricas e Log)
+ * Modelo de dados: uma aba por entidade. Toda aba (exceto Vagas, Rubricas e Log)
  * carrega usuario_id, e nenhuma função devolve linhas de outro usuário.
+ *
+ * Vagas (decisão D2, 11/11/2026): Vagas é o catálogo, uma linha por anúncio
+ * público, com vaga_id = "<fonte>:<id na fonte>". O que é de cada candidato
+ * (nota, motivos, descarte) fica em VagasCandidato, chave usuario_id + vaga_id.
+ * A página nunca lista o catálogo inteiro: só as vagas que têm linha do
+ * candidato em VagasCandidato.
  */
 const ESQUEMA: Record<string, string[]> = {
   Usuarios: ["usuario_id", "email", "nome", "papel", "ativo", "aceite_lgpd_em", "criado_em", "termo_versao", "pasta_id"],
@@ -9,7 +15,8 @@ const ESQUEMA: Record<string, string[]> = {
   Preferencias: ["usuario_id", "titulos", "modalidades", "ufs", "cidades", "aceita_pj", "idiomas", "termos_excluir", "nota_minima"],
   Curriculos: ["curriculo_id", "usuario_id", "tipo", "drive_file_id", "vaga_id", "paginas", "criado_em"],
   Analises: ["analise_id", "usuario_id", "curriculo_id", "rubrica_versao", "total", "parcial", "itens_json", "criado_em"],
-  Vagas: ["vaga_id", "usuario_id", "empresa", "titulo", "link", "fonte", "local", "modalidade", "nota_regras", "motivos", "nota_ia", "descartada", "motivo_descarte", "vista_em"],
+  Vagas: ["vaga_id", "fonte", "fonte_id", "empresa", "titulo", "link", "local", "modalidade", "publicada_em", "coletada_em", "vista_por_ultimo_em"],
+  VagasCandidato: ["usuario_id", "vaga_id", "nota_regras", "motivos", "nota_ia", "descartada", "motivo_descarte", "vista_em"],
   Candidaturas: ["usuario_id", "vaga_id", "status", "canal", "cv_usado", "enviado_em", "proxima_cobranca", "obs", "atualizado_em"],
   Textos: ["texto_id", "usuario_id", "vaga_id", "tipo", "conteudo", "limite_caracteres", "versao", "editado_pelo_usuario", "criado_em"],
   Recomendacoes: ["usuario_id", "pessoa", "relacao", "angulo", "status", "pedido_em", "recebida_em"],
@@ -50,6 +57,9 @@ const VALIDACOES: Record<string, Record<string, string>> = {
  */
 const VALIDACOES_ESPECIAIS: Record<string, Record<string, "caixa" | "nota" | { varios: string }>> = {
   Usuarios: { ativo: "caixa" },
+  // descartada sem caixa de seleção: a caixa grava FALSE em todas as linhas vazias e
+  // getLastRow() passaria a apontar para o fim da aba.
+  VagasCandidato: { nota_regras: "nota", nota_ia: "nota" },
   Preferencias: {
     ufs: { varios: "uf" },
     modalidades: { varios: "modalidade" },

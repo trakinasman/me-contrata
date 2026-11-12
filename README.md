@@ -40,6 +40,20 @@ A página responde sempre a mesma mensagem, para não revelar quem está cadastr
 | `login_limite_pedidos` | | Mais de 3 pedidos na última hora (conta mesmo para e-mail não cadastrado). Espere ou rode `desbloquearLogins` |
 | `login_recusado` | `nao_encontrado` ou `inativo` | O código estava certo, mas o cadastro foi apagado ou desativado depois do envio |
 
+### Ligar o agente de vagas (E3-01)
+
+O `buscar_vagas.py` (projeto `linkedin`, pasta `agente_vagas`) envia as vagas selecionadas para o `doPost` do web app. Para ligar, crie `agente_vagas/me_contrata_local.json`:
+
+```json
+{
+  "url": "https://script.google.com/macros/s/<ID da implantação>/exec",
+  "segredo": "<AGENTE_SEGREDO, em Configurações do projeto > Propriedades do script>",
+  "usuario_id": "<seu usuario_id na aba Usuarios>"
+}
+```
+
+Esse arquivo tem o segredo: não compartilhe nem suba para repositório. Teste com `python enviar_me_contrata.py` (envia uma lista vazia e mostra a resposta). O segredo nunca vai na requisição: cada envio é assinado (HMAC-SHA256) e só vale uma vez. As recusas aparecem na aba `Log` como `agente_recusado`, com o motivo. Mudanças no `doPost` só valem depois do `npm run deploy`.
+
 ## Estrutura
 
 ```
