@@ -19,6 +19,7 @@ const SECOES_FICHA: { id: string; nome: string; dica: string }[] = [
   { id: "quem_sou", nome: "Quem sou", dica: "Formação, área, anos de experiência, o que você faz hoje." },
   { id: "provas", nome: "Provas (resultados)", dica: "Resultados concretos, de preferência com números." },
   { id: "como_soo", nome: "Como soo", dica: "O tom dos seus textos: ritmo, jeito de escrever e trechos que soam como você." },
+  { id: "personalidade", nome: "Personalidade", dica: "Seu jeito de trabalhar e de lidar com as pessoas, de preferência com um exemplo." },
   { id: "posicoes", nome: "Minhas posições", dica: "O que você defende e como enxerga o seu trabalho." },
   { id: "palavras_usa", nome: "Palavras que uso", dica: "Termos e expressões que soam como você." },
   { id: "palavras_evita", nome: "Palavras que evito", dica: "Clichês e termos que não devem aparecer nos seus textos." },
