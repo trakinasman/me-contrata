@@ -157,11 +157,16 @@ function setupPlanilha_(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
       if (idx < 0) continue;
       const faixa = aba.getRange(2, idx + 1, aba.getMaxRows() - 1, 1);
       const celula = faixa.getCell(1, 1).getA1Notation();
+      // O Sheets só valida a fórmula ao gravar de fato: sem o flush, a regra
+      // recusada estoura mais adiante, fora do try. Começa pelo separador que
+      // combina com a localidade (pt_BR usa ";", en_US usa ",").
+      const seps = /^en/i.test(ss.getSpreadsheetLocale()) ? [",", ";"] : [";", ","];
       try {
-        faixa.setDataValidation(regraEspecial_(tipo, celula, ","));
+        faixa.setDataValidation(regraEspecial_(tipo, celula, seps[0]));
+        SpreadsheetApp.flush();
       } catch (e) {
-        // Planilha em localidade que separa argumentos com ";" (ex.: pt-BR).
-        faixa.setDataValidation(regraEspecial_(tipo, celula, ";"));
+        faixa.setDataValidation(regraEspecial_(tipo, celula, seps[1]));
+        SpreadsheetApp.flush();
       }
     }
   }
