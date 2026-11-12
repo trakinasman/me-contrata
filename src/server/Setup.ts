@@ -39,6 +39,7 @@ function setupAmbiente(): void {
 
   setupPlanilha_(ss);
   cadastrarDonoComoAdmin_();
+  criarGatilhoLimpeza_();
   Logger.log("Ambiente pronto. Planilha: " + ss.getUrl());
 }
 
@@ -90,6 +91,14 @@ function desbloquearLogins(): void {
  * Num web app "Executar como: eu", o usuário efetivo é o dono e o usuário
  * ativo é o visitante (vazio se anônimo ou de outro domínio).
  */
+/** Gatilho diário (por volta das 3h) de limparSessoesVencidas. Idempotente: não duplica. */
+function criarGatilhoLimpeza_(): void {
+  const existe = ScriptApp.getProjectTriggers().some((t) => t.getHandlerFunction() === "limparSessoesVencidas");
+  if (existe) return;
+  ScriptApp.newTrigger("limparSessoesVencidas").timeBased().everyDays(1).atHour(3).create();
+  Logger.log("Gatilho diário de limpeza das sessões criado.");
+}
+
 function exigirDono_(): void {
   const ativo = Session.getActiveUser().getEmail();
   const dono = Session.getEffectiveUser().getEmail();

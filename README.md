@@ -4,7 +4,7 @@ Assistente web para candidatos a vagas, em Google Apps Script.
 
 > **Andamento:** Etapa 1 do piloto concluída (login, sessão e LGPD). Etapa 2 em andamento: a ficha do candidato (E2-01) está implementada. Veja [PROXIMOS_PASSOS.md](PROXIMOS_PASSOS.md).
 
-> **Aviso de segurança:** o web app está restrito ao dono do script (`"access": "MYSELF"`) até existir login por código com sessão e isolamento por usuário (achado S3 em [ANALISE_PROJETO.md](ANALISE_PROJETO.md)). Não abra o acesso para outras pessoas antes disso.
+> **Acesso:** o web app abre para qualquer pessoa (`"access": "ANYONE_ANONYMOUS"`), mas só entra quem está ativo na aba `Usuarios` (login por código). O isolamento entre usuários foi testado com duas contas em 11/11/2026 (achado S3 em [ANALISE_PROJETO.md](ANALISE_PROJETO.md)). Toda função nova com dados precisa começar por `exigirSessao_`/`exigirAceite_`.
 
 ## Primeira configuração
 

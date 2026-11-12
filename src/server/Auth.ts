@@ -221,6 +221,37 @@ function sair(token: string): { ok: boolean } {
   return { ok: true };
 }
 
+/**
+ * Apaga da aba Sessoes as linhas vencidas ou revogadas. Roda todo dia pelo
+ * gatilho que setupAmbiente() cria; pode rodar à mão pelo editor.
+ * Pública só para o gatilho achar a função; quem não for o dono é recusado.
+ */
+function limparSessoesVencidas(): void {
+  exigirDono_();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const { aba, cab, linhas } = lerAba_("Sessoes");
+    const cExpira = coluna_(cab, "expira_em");
+    const cRevogada = coluna_(cab, "revogada");
+    const agora = Date.now();
+    const alvo: number[] = [];
+    linhas.forEach((l, i) => {
+      const expira = new Date(l[cExpira] as string | Date).getTime();
+      if (verdadeiro_(l[cRevogada]) || isNaN(expira) || expira <= agora) alvo.push(i + 2);
+    });
+    if (!alvo.length) return;
+    // O Sheets não deixa apagar todas as linhas não congeladas: garante uma vazia no fim.
+    if (aba.getMaxRows() === aba.getLastRow()) aba.insertRowAfter(aba.getLastRow());
+    // De baixo para cima: apagar uma linha não muda o número das que estão acima,
+    // e sessões novas entram sempre no fim.
+    for (const n of alvo.reverse()) aba.deleteRow(n);
+    registrarLog_("", "sessoes_limpas", String(alvo.length));
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // ---------- Uso interno ----------
 
 /**
