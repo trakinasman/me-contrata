@@ -20,7 +20,7 @@ Assistente web para candidatos a vagas, em Google Apps Script.
 5. Envie o código: `npm run push`
 6. No editor (`npm run open`), rode `setupAmbiente` uma vez. Ele cria a planilha, a pasta do Drive, o segredo do agente e o segredo do login, grava os IDs nas Propriedades do Script e cadastra a sua conta como `admin` na aba `Usuarios`.
 7. Em Configurações do projeto > Propriedades do script, adicione `CLAUDE_API_KEY`.
-8. Publique o web app: `npm run deploy`
+8. Publique o web app: `npm run deploy:nova` na primeira vez e troque, no `package.json`, o ID do script `deploy` pelo da implantação criada. Daí em diante, `npm run deploy` publica sempre na mesma URL.
 
 ### Liberar acesso para outra pessoa
 

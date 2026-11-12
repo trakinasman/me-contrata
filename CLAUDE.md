@@ -12,7 +12,8 @@ Assistente web para candidatos a vagas: ficha do candidato, nota do perfil, adap
 - `npm run build`: limpa e gera `dist/`
 - `npm run typecheck`: checa tipos sem gerar arquivos
 - `npm run push`: build + `clasp push`
-- `npm run deploy`: push + nova implantação
+- `npm run deploy`: push + nova versão na implantação publicada (a URL `/exec` não muda)
+- `npm run deploy:nova`: push + implantação nova, com URL nova (só para um ambiente novo; depois troque o ID no script `deploy`)
 - `npm run logs`: últimos logs
 
 ## Regras do código
