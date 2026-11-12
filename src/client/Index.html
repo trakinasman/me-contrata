@@ -174,10 +174,34 @@
     }
 
     // ---------- Navegação por hash ----------
+    // A página roda num iframe do Apps Script com <base target="_top">: um link
+    // "#perfil" levaria a janela inteira para o endereço do iframe (tela branca).
+    // Por isso os links internos são interceptados e a rota fica em rotaAtual;
+    // google.script.history atualiza o endereço da janela e o botão Voltar.
     var PAGINAS = ["inicio", "embreve", "perfil"];
+    var rotaAtual = "";
+    function irPara(rota) {
+      rotaAtual = rota;
+      try { google.script.history.push(null, null, rota); } catch (e) {}
+      rotear();
+    }
+    document.addEventListener("click", function (ev) {
+      var a = ev.target.closest ? ev.target.closest('a[href^="#"]') : null;
+      if (!a) return;
+      ev.preventDefault();
+      irPara(a.getAttribute("href").slice(1));
+    });
+    google.script.history.setChangeHandler(function (e) {
+      rotaAtual = (e.location && e.location.hash) || "";
+      rotear();
+    });
+    google.script.url.getLocation(function (loc) {
+      rotaAtual = loc.hash || "";
+      rotear();
+    });
     function rotear() {
       if (el("tela-app").hidden) return;
-      var partes = location.hash.replace(/^#/, "").split("/");
+      var partes = rotaAtual.replace(/^#/, "").split("/");
       var pag = partes[0] || "inicio";
       var visivel = PAGINAS.indexOf(pag) >= 0 && pag !== "embreve" ? pag : "embreve";
       PAGINAS.forEach(function (p) { el("pag-" + p).hidden = p !== visivel; });
@@ -193,7 +217,6 @@
       });
       if (aba === "ficha" && !ficha) carregarFicha();
     }
-    window.addEventListener("hashchange", rotear);
 
     // ---------- Ficha (E2-01) ----------
     // Todo texto da ficha entra na página por textContent (via h), nunca por innerHTML.

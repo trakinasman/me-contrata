@@ -18,8 +18,8 @@ const MSG_ITEM_NAO_ENCONTRADO = "Item não encontrado. Recarregue a página.";
 const SECOES_FICHA: { id: string; nome: string; dica: string }[] = [
   { id: "quem_sou", nome: "Quem sou", dica: "Formação, área, anos de experiência, o que você faz hoje." },
   { id: "provas", nome: "Provas (resultados)", dica: "Resultados concretos, de preferência com números." },
-  { id: "como_soo", nome: "Como sou", dica: "Seu jeito de trabalhar e de se comunicar." },
-  { id: "posicoes", nome: "Posições", dica: "O que você defende e como enxerga o seu trabalho." },
+  { id: "como_soo", nome: "Como soo", dica: "O tom dos seus textos: ritmo, jeito de escrever e trechos que soam como você." },
+  { id: "posicoes", nome: "Minhas posições", dica: "O que você defende e como enxerga o seu trabalho." },
   { id: "palavras_usa", nome: "Palavras que uso", dica: "Termos e expressões que soam como você." },
   { id: "palavras_evita", nome: "Palavras que evito", dica: "Clichês e termos que não devem aparecer nos seus textos." },
   { id: "fora_dos_limites", nome: "Fora dos limites", dica: "O que nunca deve ser afirmado sobre você." },
