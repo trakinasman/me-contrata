@@ -17,6 +17,7 @@
  * Ações (campo `acao` de dados):
  * - "preferencias" (E3-02): devolve as preferências de cada usuário ativo que aceitou
  *   o termo e tem linha em Preferencias. Só usuario_id e preferências; nunca e-mail ou nome.
+ *   Desde a E3-04 também leva as listas aprovadas de ListasBusca (listas, empresas_carreira, grupos).
  *   dados = { acao: "preferencias" }
  * - "vagas" (E3-01): grava as vagas de um usuário.
  *   dados = { acao: "vagas", usuario_id, vagas: [{ fonte, fonte_id, empresa, titulo, link,
@@ -45,6 +46,10 @@ interface PreferenciasAgente {
   idiomas: string[];
   termos_excluir: string[];
   nota_minima: number;
+  // E3-04: listas aprovadas em ListasBusca (vazias se o usuário ainda não tem).
+  listas: Record<string, string[]>;
+  empresas_carreira: { nome: string; subdominio: string }[];
+  grupos: Record<string, string[]>;
 }
 
 const MODALIDADE_AGENTE: Record<string, string> = {
@@ -275,6 +280,7 @@ function preferenciasParaAgente_(): { ok: boolean; usuarios: PreferenciasAgente[
 
   const { cab, linhas } = lerAba_("Preferencias");
   const c = (nome: string) => coluna_(cab, nome);
+  const listas = listasAprovadasPorUsuario_();
   const usuarios: PreferenciasAgente[] = [];
   const vistos = new Set<string>();
   for (const l of linhas) {
@@ -294,6 +300,9 @@ function preferenciasParaAgente_(): { ok: boolean; usuarios: PreferenciasAgente[
       nota_minima: nota && Number.isFinite(Number(nota))
         ? Math.max(0, Math.min(100, Math.round(Number(nota))))
         : AGENTE.NOTA_MINIMA_PADRAO,
+      listas: listas.get(uid)?.listas ?? {},
+      empresas_carreira: listas.get(uid)?.empresas_carreira ?? [],
+      grupos: listas.get(uid)?.grupos ?? {},
     });
   }
   const sem = ativos.size - usuarios.length;

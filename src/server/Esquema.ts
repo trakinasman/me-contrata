@@ -13,6 +13,10 @@ const ESQUEMA: Record<string, string[]> = {
   // Fichas: uma linha por item; `item` é o ID do item (UUID).
   Fichas: ["usuario_id", "secao", "item", "texto", "status", "origem", "atualizado_em"],
   Preferencias: ["usuario_id", "titulos", "modalidades", "ufs", "cidades", "aceita_pj", "idiomas", "termos_excluir", "nota_minima"],
+  // ListasBusca (E3-04): uma linha por lista do agente de vagas de cada usuário (nivel, area,
+  // excluir, empresas_carreira, grupo:<nome>...). Termos separados por vírgula. O agente só usa
+  // as linhas `aprovada`; o que a IA gera entra como `a_revisar`.
+  ListasBusca: ["usuario_id", "lista", "termos", "status", "origem", "atualizado_em"],
   Curriculos: ["curriculo_id", "usuario_id", "tipo", "drive_file_id", "vaga_id", "paginas", "criado_em"],
   Analises: ["analise_id", "usuario_id", "curriculo_id", "rubrica_versao", "total", "parcial", "itens_json", "criado_em"],
   Vagas: ["vaga_id", "fonte", "fonte_id", "empresa", "titulo", "link", "local", "modalidade", "publicada_em", "coletada_em", "vista_por_ultimo_em"],
@@ -35,6 +39,7 @@ const LISTAS: Record<string, string[]> = {
   tipo_curriculo: ["base", "linkedin", "adaptado"],
   modalidade: ["remoto", "hibrido", "presencial"],
   secao_ficha: ["quem_sou", "como_soo", "personalidade", "palavras_usa", "palavras_evita", "posicoes", "fora_dos_limites", "provas"],
+  status_lista: ["a_revisar", "aprovada"],
   uf: ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"],
 };
 
@@ -42,6 +47,7 @@ const LISTAS: Record<string, string[]> = {
 const VALIDACOES: Record<string, Record<string, string>> = {
   Usuarios: { papel: "papel" },
   Fichas: { secao: "secao_ficha", status: "status_ficha" },
+  ListasBusca: { status: "status_lista" },
   Curriculos: { tipo: "tipo_curriculo" },
   Vagas: { modalidade: "modalidade" },
   Candidaturas: { status: "status_candidatura" },
