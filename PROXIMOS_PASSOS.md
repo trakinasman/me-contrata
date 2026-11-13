@@ -165,7 +165,13 @@ Ajuste publicado na versão @15 (13/11/2026). O `.clasp.json` deste computador a
 - O prompt segue os aprendizados acima: fatos só da ficha, nada de detalhe plausível inventado, [CONFIRMAR: o que falta] no lugar, sem sinal de busca de emprego, limites e estrutura de cada texto, tom do candidato. A IA devolve também até 6 pontos para conferir antes de publicar.
 - O servidor limpa travessão, aspas curvas, reticências de um caractere e caracteres invisíveis, mantendo as quebras de linha do Sobre, e confere os limites (título 220, Sobre 1.400, cargo 1.200). Fora do limite gera nova tentativa; se falhar de novo, erro. É o começo da E4-05, sem o léxico.
 - Cada geração grava uma versão nova de cada texto na aba `Textos` (`linkedin_titulo`, `linkedin_sobre`, `linkedin_cargo_atual`, sem vaga). Limite de 5 por dia. A página mostra os textos com os [CONFIRMAR] destacados, a contagem de caracteres e um botão Copiar.
-- Testes com Apps Script simulado: 24 casos (o que entra em cada bloco do prompt, isolamento, limpeza, limites com nova tentativa, versões, proibidos na ficha cheia, limite diário). Falta: publicar, gerar com o perfil real do Roberto e comparar com o gabarito escrito à mão.
+- Testes com Apps Script simulado: 24 casos (o que entra em cada bloco do prompt, isolamento, limpeza, limites com nova tentativa, versões, proibidos na ficha cheia, limite diário). Publicada na versão @18.
+
+**E4-04 testada no ambiente real (13/11/2026).** Título com 197 caracteres, Sobre com 1.267 e cargo atual com 558, sem tentativa inválida; US$ 0,0527 (9.655 tokens de entrada, 3.336 de saída, esforço alto). Comparado com o gabarito escrito à mão: equivalente, com abertura do Sobre melhor (usou a posição confirmada sobre SLA).
+- Funcionou: as certificações que estão no LinkedIn e não na ficha ficaram de fora; o e-mail de contato, que não estava na ficha, saiu como [CONFIRMAR]; não usou números internos da Quantum13 além do SLA (proibido); tom e posições do candidato; limites e quebra antes do "ver mais".
+- Erro de precisão: juntou dois fatos ("a esteira e todos os dashboards" com Gemini, Claude e Codex; na ficha, os dashboards são só Gemini e Claude). O prompt ganhou a regra de não juntar fatos nem acrescentar causa ou efeito que o item não traz.
+- Acréscimo vindo do perfil: "com a operação sustentando o crescimento", no item da base de clientes. Coberto pela mesma regra.
+- Ficha do Roberto: item confirmado com o e-mail de contato (gmail), para o [CONFIRMAR] não voltar.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
