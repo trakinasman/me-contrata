@@ -20,7 +20,7 @@ const ESQUEMA: Record<string, string[]> = {
   Curriculos: ["curriculo_id", "usuario_id", "tipo", "drive_file_id", "vaga_id", "paginas", "criado_em"],
   Analises: ["analise_id", "usuario_id", "curriculo_id", "rubrica_versao", "total", "parcial", "itens_json", "criado_em"],
   Vagas: ["vaga_id", "fonte", "fonte_id", "empresa", "titulo", "link", "local", "modalidade", "publicada_em", "coletada_em", "vista_por_ultimo_em"],
-  VagasCandidato: ["usuario_id", "vaga_id", "nota_regras", "motivos", "nota_ia", "descartada", "motivo_descarte", "vista_em"],
+  VagasCandidato: ["usuario_id", "vaga_id", "nota_regras", "motivos", "nota_ia", "descartada", "motivo_descarte", "vista_em", "selecionada_em"],
   Candidaturas: ["usuario_id", "vaga_id", "status", "canal", "cv_usado", "enviado_em", "proxima_cobranca", "obs", "atualizado_em"],
   Textos: ["texto_id", "usuario_id", "vaga_id", "tipo", "conteudo", "limite_caracteres", "versao", "editado_pelo_usuario", "criado_em"],
   Recomendacoes: ["usuario_id", "pessoa", "relacao", "angulo", "status", "pedido_em", "recebida_em"],

@@ -33,7 +33,7 @@ const AGENTE = {
   // Preferências: limites de cada lista e nota mínima quando a célula está vazia.
   PREF_MAX_ITENS: 50,
   PREF_MAX_TEXTO: 80,
-  NOTA_MINIMA_PADRAO: 50,
+  NOTA_MINIMA_PADRAO: 55,
 } as const;
 
 interface PreferenciasAgente {
@@ -189,11 +189,19 @@ function validarVagaAgente_(v: unknown): VagaRecebida | null {
 }
 
 /**
- * Grava as vagas no catálogo (uma vez por vaga_id) e cria a linha do candidato
- * em VagasCandidato quando ainda não existe. Vaga que o candidato já tem,
- * inclusive descartada, não é recriada nem alterada.
+ * Grava as vagas no catálogo (uma vez por vaga_id) e o estado do candidato (E3-01, E3-05):
+ * - Vaga nova para o candidato: cria a linha em VagasCandidato, salvo se ele já tem outra vaga
+ *   com o mesmo título e a mesma empresa (o mesmo anúncio em outro portal): aí só o catálogo ganha
+ *   o anúncio, e a vaga conta como duplicada.
+ * - Vaga que ele já tem: atualiza nota, motivos e selecionada_em (a última vez que o agente a
+ *   selecionou). Descartada fica como está e nunca é recriada.
+ * Vaga que deixa de vir (nota caiu ou anúncio fechou) mantém o selecionada_em antigo: a página
+ * mostra como vigente só o que foi selecionado recentemente. Nada é apagado.
  */
-function receberVagas_(usuarioId: unknown, vagas: unknown): { ok: boolean; erro?: string; novas_catalogo?: number; novas_candidato?: number; ja_tinha?: number; ignoradas?: number } {
+function receberVagas_(usuarioId: unknown, vagas: unknown): {
+  ok: boolean; erro?: string; novas_catalogo?: number; novas_candidato?: number; ja_tinha?: number;
+  atualizadas?: number; duplicadas?: number; ignoradas?: number;
+} {
   const uid = String(usuarioId ?? "").trim();
   if (!/^[0-9a-f-]{36}$/i.test(uid)) { registrarLog_("", "agente_recusado", "usuario_id"); return { ok: false, erro: "invalido" }; }
   const u = buscarUsuarioPorId_(uid);
@@ -205,7 +213,7 @@ function receberVagas_(usuarioId: unknown, vagas: unknown): { ok: boolean; erro?
   const validas = new Map<string, VagaRecebida>();
   for (const v of vagas) {
     const ok = validarVagaAgente_(v);
-    if (ok) validas.set(ok.vaga_id, ok);
+    if (ok && !validas.has(ok.vaga_id)) validas.set(ok.vaga_id, ok);
   }
   const ignoradas = vagas.length - validas.size;
   const agora = new Date();
@@ -217,6 +225,8 @@ function receberVagas_(usuarioId: unknown, vagas: unknown): { ok: boolean; erro?
     const cat = lerAba_("Vagas");
     const cId = coluna_(cat.cab, "vaga_id");
     const cVista = coluna_(cat.cab, "vista_por_ultimo_em");
+    const cTit = coluna_(cat.cab, "titulo");
+    const cEmp = coluna_(cat.cab, "empresa");
     const linhaDe = new Map<string, number>();
     cat.linhas.forEach((l, i) => { const id = String(l[cId]).trim(); if (id) linhaDe.set(id, i); });
 
@@ -240,29 +250,79 @@ function receberVagas_(usuarioId: unknown, vagas: unknown): { ok: boolean; erro?
     if (mudouVista && colVista.length) cat.aba.getRange(2, cVista + 1, colVista.length, 1).setValues(colVista);
     anexarLinhas_("Vagas", novasCat);
 
-    // Estado do candidato: só cria o que ainda não existe.
+    // Estado do candidato.
     const est = lerAba_("VagasCandidato");
-    const eUid = coluna_(est.cab, "usuario_id");
-    const eVaga = coluna_(est.cab, "vaga_id");
-    const jaTem = new Set<string>();
-    for (const l of est.linhas) if (String(l[eUid]).trim() === uid) jaTem.add(String(l[eVaga]).trim());
+    const e = (n: string) => coluna_(est.cab, n);
+    const linhaDoUsuario = new Map<string, number>();
+    const chavesDoUsuario = new Set<string>();
+    est.linhas.forEach((l, i) => {
+      if (String(l[e("usuario_id")]).trim() !== uid) return;
+      const vagaId = String(l[e("vaga_id")]).trim();
+      linhaDoUsuario.set(vagaId, i);
+      const c = linhaDe.get(vagaId);
+      if (c !== undefined) {
+        const chave = chaveTituloEmpresa_(cat.linhas[c][cTit], cat.linhas[c][cEmp]);
+        if (chave) chavesDoUsuario.add(chave);
+      }
+    });
 
+    // Atualiza nota, motivos e selecionada_em das que ele já tem (não descartadas). Só estas três
+    // colunas são reescritas, sob a trava; a página nunca grava nelas.
+    const colNota = est.linhas.map((l) => [l[e("nota_regras")]]);
+    const colMotivos = est.linhas.map((l) => [l[e("motivos")]]);
+    const colSel = est.linhas.map((l) => [l[e("selecionada_em")]]);
+    let atualizadas = 0;
+    let duplicadas = 0;
     const novasEst: Record<string, unknown>[] = [];
     for (const v of validas.values()) {
-      if (jaTem.has(v.vaga_id)) continue;
+      const i = linhaDoUsuario.get(v.vaga_id);
+      if (i !== undefined) {
+        if (verdadeiro_(est.linhas[i][e("descartada")])) continue;
+        colNota[i] = [v.nota];
+        colMotivos[i] = [celulaTexto_(v.motivos)];
+        colSel[i] = [agora];
+        atualizadas++;
+        continue;
+      }
+      const chave = chaveTituloEmpresa_(v.titulo, v.empresa);
+      if (chave && chavesDoUsuario.has(chave)) { duplicadas++; continue; }
+      if (chave) chavesDoUsuario.add(chave);
       novasEst.push({
         usuario_id: uid, vaga_id: v.vaga_id, nota_regras: v.nota, motivos: v.motivos,
-        descartada: false, vista_em: agora,
+        descartada: false, vista_em: agora, selecionada_em: agora,
       });
+    }
+    if (atualizadas) {
+      for (const [nome, col] of [["nota_regras", colNota], ["motivos", colMotivos], ["selecionada_em", colSel]] as const) {
+        est.aba.getRange(2, e(nome) + 1, col.length, 1).setValues(col);
+      }
     }
     anexarLinhas_("VagasCandidato", novasEst);
 
-    const r = { ok: true, novas_catalogo: novasCat.length, novas_candidato: novasEst.length, ja_tinha: validas.size - novasEst.length, ignoradas };
-    registrarLog_(uid, "agente_vagas", `catalogo +${r.novas_catalogo}, candidato +${r.novas_candidato}, ja_tinha ${r.ja_tinha}, ignoradas ${ignoradas}`);
+    const r = {
+      ok: true, novas_catalogo: novasCat.length, novas_candidato: novasEst.length,
+      ja_tinha: validas.size - novasEst.length - duplicadas, atualizadas, duplicadas, ignoradas,
+    };
+    registrarLog_(uid, "agente_vagas",
+      `catalogo +${r.novas_catalogo}, candidato +${r.novas_candidato}, ja_tinha ${r.ja_tinha} (${atualizadas} atualizadas), ` +
+      `duplicadas ${duplicadas}, ignoradas ${ignoradas}`);
     return r;
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Chave do mesmo anúncio em portais diferentes: título e empresa sem acento, maiúsculas,
+ * pontuação nem espaços. Empresa vazia ou confidencial não gera chave (juntaria vagas diferentes).
+ */
+function chaveTituloEmpresa_(titulo: unknown, empresa: unknown): string {
+  const limpa = (x: unknown) => String(x ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+  const emp = limpa(empresa);
+  const tit = limpa(titulo);
+  if (!emp || !tit || /confidencial|sigilos|naoinformad/.test(emp)) return "";
+  return `${tit}|${emp}`;
 }
 
 /**
