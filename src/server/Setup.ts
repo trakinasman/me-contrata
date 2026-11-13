@@ -106,12 +106,14 @@ function redefinirAbaVaziaSeMudou_(aba: GoogleAppsScript.Spreadsheet.Sheet, colu
   Logger.log(`Aba ${aba.getName()} estava vazia e com colunas antigas: cabeçalho refeito.`);
 }
 
-/** Gatilho diário (por volta das 3h) de limparSessoesVencidas. Idempotente: não duplica. */
+/** Gatilhos diários de limpeza (por volta das 3h e 4h). Idempotente: não duplica. */
 function criarGatilhoLimpeza_(): void {
-  const existe = ScriptApp.getProjectTriggers().some((t) => t.getHandlerFunction() === "limparSessoesVencidas");
-  if (existe) return;
-  ScriptApp.newTrigger("limparSessoesVencidas").timeBased().everyDays(1).atHour(3).create();
-  Logger.log("Gatilho diário de limpeza das sessões criado.");
+  const existentes = ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction());
+  for (const [funcao, hora] of [["limparSessoesVencidas", 3], ["limparComprovacoesVencidas", 4]] as const) {
+    if (existentes.includes(funcao)) continue;
+    ScriptApp.newTrigger(funcao).timeBased().everyDays(1).atHour(hora).create();
+    Logger.log(`Gatilho diário ${funcao} criado.`);
+  }
 }
 
 function exigirDono_(): void {

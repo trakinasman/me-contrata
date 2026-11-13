@@ -19,6 +19,9 @@ const ESQUEMA: Record<string, string[]> = {
   ListasBusca: ["usuario_id", "lista", "termos", "status", "origem", "atualizado_em"],
   Curriculos: ["curriculo_id", "usuario_id", "tipo", "drive_file_id", "vaga_id", "paginas", "criado_em", "texto_drive_id"],
   Analises: ["analise_id", "usuario_id", "curriculo_id", "rubrica_versao", "total", "parcial", "itens_json", "criado_em"],
+  // Comprovacoes (E4-03): prints do perfil enviados para a nota. O arquivo é apagado 30 dias depois
+  // (achado A3); a linha fica com apagado_em e sem drive_file_id.
+  Comprovacoes: ["comprovacao_id", "usuario_id", "analise_id", "tipo", "drive_file_id", "criado_em", "apagado_em"],
   Vagas: ["vaga_id", "fonte", "fonte_id", "empresa", "titulo", "link", "local", "modalidade", "publicada_em", "coletada_em", "vista_por_ultimo_em"],
   VagasCandidato: ["usuario_id", "vaga_id", "nota_regras", "motivos", "nota_ia", "descartada", "motivo_descarte", "vista_em", "selecionada_em"],
   Candidaturas: ["usuario_id", "vaga_id", "status", "canal", "cv_usado", "enviado_em", "proxima_cobranca", "obs", "atualizado_em"],
@@ -40,6 +43,7 @@ const LISTAS: Record<string, string[]> = {
   modalidade: ["remoto", "hibrido", "presencial"],
   secao_ficha: ["quem_sou", "como_soo", "personalidade", "palavras_usa", "palavras_evita", "posicoes", "fora_dos_limites", "provas"],
   status_lista: ["a_revisar", "aprovada"],
+  tipo_print: ["topo", "destaques", "atividade"],
   uf: ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"],
 };
 
@@ -48,6 +52,7 @@ const VALIDACOES: Record<string, Record<string, string>> = {
   Usuarios: { papel: "papel" },
   Fichas: { secao: "secao_ficha", status: "status_ficha" },
   ListasBusca: { status: "status_lista" },
+  Comprovacoes: { tipo: "tipo_print" },
   Curriculos: { tipo: "tipo_curriculo" },
   Vagas: { modalidade: "modalidade" },
   Candidaturas: { status: "status_candidatura" },

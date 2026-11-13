@@ -140,6 +140,26 @@
             <p id="erro-analise" class="erro" role="alert"></p>
             <div id="resultado-analise"></div>
           </div>
+          <form id="form-prints" class="card stack" novalidate hidden>
+            <h2>Completar a nota</h2>
+            <p class="muted small">O PDF não mostra destaques, banner, foto e atividade (30 pontos). Mande prints da tela do seu perfil, ou responda as perguntas. Os prints são apagados 30 dias depois do envio; a nota fica.</p>
+            <div>
+              <label for="print-topo">Print do topo do perfil (foto e banner)</label>
+              <input type="file" id="print-topo" accept="image/*">
+            </div>
+            <div>
+              <label for="print-destaques">Print da seção Destaques</label>
+              <input type="file" id="print-destaques" accept="image/*">
+            </div>
+            <div>
+              <label for="print-atividade">Print da aba Atividade (posts e comentários)</label>
+              <input type="file" id="print-atividade" accept="image/*">
+            </div>
+            <p class="small muted">Sem print? Responda. Item só declarado vale no máximo 70% dos pontos.</p>
+            <div id="perguntas-prints" class="stack"></div>
+            <p id="erro-prints" class="erro" role="alert"></p>
+            <div><button class="btn prim" type="submit">Completar a nota</button></div>
+          </form>
         </div>
 
         <div id="aba-dados" class="card stack" hidden>
@@ -262,6 +282,7 @@
     }
 
     function desenharAnalise(a) {
+      el("form-prints").hidden = !a;
       if (!a) { el("resultado-analise").replaceChildren(h("p", { class: "muted small" }, "Nenhuma análise ainda.")); return; }
       var quando = new Date(a.criadoEm);
       var resumo = a.parcial
@@ -273,11 +294,80 @@
         h("div", { class: "stack" }, a.itens.map(function (i) {
           var nota = i.nota == null ? "não avaliado" : i.nota + " / " + i.pontos;
           var classe = i.nota == null ? "" : i.nota >= i.pontos * 0.8 ? "ok" : i.nota >= i.pontos * 0.4 ? "warn" : "bad";
+          var origem = { print: "pelo print", resposta: "declarado" }[i.origem];
           return h("div", { class: "item-ficha" },
-            h("div", { class: "row entre" }, h("b", {}, i.nome), h("span", { class: "chip " + classe }, nota)),
+            h("div", { class: "row entre" }, h("b", {}, i.nome),
+              h("span", {}, origem ? h("span", { class: "small muted" }, origem + " ") : null, h("span", { class: "chip " + classe }, nota))),
             h("div", { class: "small" }, i.motivo));
         })));
     }
+
+    // ---------- Completar a nota com prints ou respostas (E4-03) ----------
+    var PERGUNTAS_PRINT = [
+      { item: "photo", texto: "Sua foto é dos últimos 2 anos, com o rosto ocupando boa parte e os olhos visíveis?" },
+      { item: "banner", texto: "Seu banner tem uma frase de posicionamento e um jeito de falar com você (não é o fundo padrão)?" },
+      { item: "featured", texto: "Sua seção Destaques tem 3 itens atuais: um post, uma prova do seu trabalho e um contato?" },
+      { item: "activity", texto: "Você postou ou comentou no LinkedIn nos últimos 7 dias?" }
+    ];
+    el("perguntas-prints").replaceChildren.apply(el("perguntas-prints"), PERGUNTAS_PRINT.map(function (p) {
+      return h("div", {},
+        h("label", { for: "resp-" + p.item }, p.texto),
+        h("select", { id: "resp-" + p.item },
+          h("option", { value: "" }, "Não vou responder"),
+          h("option", { value: "sim" }, "Sim"),
+          h("option", { value: "em_parte" }, "Em parte"),
+          h("option", { value: "nao" }, "Não")));
+    }));
+
+    // Reduz o print a no máximo 1600 px no lado maior e envia como JPEG (fica leve, inclusive no celular).
+    function reduzirImagem(arquivo, pronto, falha) {
+      if (!/^image\//.test(arquivo.type)) { falha("Escolha uma imagem (JPG ou PNG)."); return; }
+      var leitor = new FileReader();
+      leitor.onerror = function () { falha("Não deu para ler a imagem."); };
+      leitor.onload = function () {
+        var img = new Image();
+        img.onerror = function () { falha("Não deu para abrir a imagem. Use JPG ou PNG."); };
+        img.onload = function () {
+          var escala = Math.min(1, 1600 / Math.max(img.width, img.height));
+          var tela = document.createElement("canvas");
+          tela.width = Math.round(img.width * escala);
+          tela.height = Math.round(img.height * escala);
+          var ctx = tela.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, tela.width, tela.height);
+          ctx.drawImage(img, 0, 0, tela.width, tela.height);
+          pronto(tela.toDataURL("image/jpeg", 0.85).replace(/^data:[^,]*,/, ""));
+        };
+        img.src = leitor.result;
+      };
+      leitor.readAsDataURL(arquivo);
+    }
+
+    el("form-prints").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var form = ev.target;
+      el("erro-prints").textContent = "";
+      var arquivos = ["topo", "destaques", "atividade"].map(function (t) { return { tipo: t, arq: el("print-" + t).files[0] }; })
+        .filter(function (x) { return x.arq; });
+      var respostas = {};
+      PERGUNTAS_PRINT.forEach(function (p) { var v = el("resp-" + p.item).value; if (v) respostas[p.item] = v; });
+      if (!arquivos.length && !Object.keys(respostas).length) { el("erro-prints").textContent = "Envie um print ou responda pelo menos uma pergunta."; return; }
+      ocupado(form, true);
+      Array.prototype.forEach.call(form.querySelectorAll("select"), function (s) { s.disabled = true; });
+      function liberar() { ocupado(form, false); Array.prototype.forEach.call(form.querySelectorAll("select"), function (s) { s.disabled = false; }); }
+      el("resultado-analise").replaceChildren(h("p", { class: "muted small" }, "Avaliando… pode levar até um minuto."));
+      var prints = [];
+      (function proximo(i) {
+        if (i < arquivos.length) {
+          reduzirImagem(arquivos[i].arq, function (b64) { prints.push({ tipo: arquivos[i].tipo, base64: b64 }); proximo(i + 1); },
+            function (msg) { liberar(); el("erro-prints").textContent = msg; carregarAnalise(); });
+          return;
+        }
+        chamar("completarNotaPerfil", [tokenAtual, { prints: prints, respostas: respostas }], function (a) {
+          liberar(); form.reset(); desenharAnalise(a);
+        }, function (msg) { liberar(); el("erro-prints").textContent = msg; carregarAnalise(); });
+      })(0);
+    });
 
     el("analisar").addEventListener("click", function () {
       var botao = el("analisar");
