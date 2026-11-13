@@ -48,6 +48,8 @@ interface ItemAnalise {
   pontos: number;
   nota: number | null; // null = não avaliado (o PDF não mostra)
   motivo: string;
+  /** "print" quando a nota veio de um print do perfil (E4-03); ausente = PDF. */
+  fonte?: string;
 }
 
 interface ResultadoAnalise {
@@ -86,45 +88,22 @@ function analisarPerfil(token: string): ResultadoAnalise {
   }
   if (!itens) throw new Error("A análise não veio no formato esperado. Tente de novo em alguns minutos.");
 
-  const total = itens.reduce((n, i) => n + (i.nota ?? 0), 0);
-  const maximo = total + itens.filter((i) => i.nota === null).reduce((n, i) => n + i.pontos, 0);
-  const parcial = itens.some((i) => i.nota === null);
-  const agora = new Date();
-  const id = Utilities.getUuid();
-  anexarLinha_("Analises", {
-    analise_id: id, usuario_id: s.usuario_id, curriculo_id: cv.id, rubrica_versao: `${RUBRICA_PERFIL.ID}@${RUBRICA_PERFIL.VERSAO}`,
-    total, parcial, itens_json: JSON.stringify(itens.map((i) => ({ item: i.item, nota: i.nota, motivo: i.motivo }))),
-    criado_em: agora,
-  });
-  registrarLog_(s.usuario_id, "perfil_analisado", `total ${total}${parcial ? ` (parcial, até ${maximo})` : ""}`);
-  return { id, criadoEm: agora.toISOString(), total, maximo, parcial, itens };
+  // Itens já avaliados por print (E4-03) continuam valendo: o PDF não mostra esses itens.
+  const anterior = analiseDoUsuario_(s.usuario_id);
+  if (anterior) {
+    const porPrint = new Map(anterior.resultado.itens.filter((i) => i.fonte === "print").map((i) => [i.item, i]));
+    itens = itens.map((i) => porPrint.get(i.item) ?? i);
+  }
+  const r = gravarAnalise_(s.usuario_id, cv.id, itens);
+  registrarLog_(s.usuario_id, "perfil_analisado", `total ${r.total}${r.parcial ? ` (parcial, até ${r.maximo})` : ""}`);
+  return r;
 }
 
 /** Última análise do candidato, ou null. */
 function ultimaAnalise(token: string): ResultadoAnalise | null {
   const s = exigirAceite_(token);
-  const { cab, linhas } = lerAba_("Analises");
-  const c = (n: string) => coluna_(cab, n);
-  const minhas = linhas.filter((l) => String(l[c("usuario_id")]).trim() === s.usuario_id);
-  if (!minhas.length) return null;
-  const l = minhas[minhas.length - 1];
-  const porItem = new Map(RUBRICA_PERFIL.ITENS.map((i) => [i.item as string, i]));
-  let salvos: { item: string; nota: number | null; motivo: string }[] = [];
-  try { salvos = JSON.parse(String(l[c("itens_json")])); } catch (_) { salvos = []; }
-  const itens: ItemAnalise[] = salvos.filter((x) => porItem.has(x.item)).map((x) => ({
-    item: x.item, nome: porItem.get(x.item)!.nome, pontos: porItem.get(x.item)!.pontos,
-    nota: x.nota, motivo: String(x.motivo ?? ""),
-  }));
-  const total = Number(l[c("total")]) || 0;
-  const criado = l[c("criado_em")];
-  return {
-    id: String(l[c("analise_id")]),
-    criadoEm: criado instanceof Date ? criado.toISOString() : String(criado),
-    total,
-    maximo: total + itens.filter((i) => i.nota === null).reduce((n, i) => n + i.pontos, 0),
-    parcial: verdadeiro_(l[c("parcial")]),
-    itens,
-  };
+  const a = analiseDoUsuario_(s.usuario_id);
+  return a ? a.resultado : null;
 }
 
 // ---------- Administração ----------
@@ -143,6 +122,55 @@ function garantirRubricas_(): void {
 }
 
 // ---------- Uso interno ----------
+
+/** Última análise do usuário (e o currículo a que ela se refere), ou null. */
+function analiseDoUsuario_(usuarioId: string): { resultado: ResultadoAnalise; curriculoId: string } | null {
+  const { cab, linhas } = lerAba_("Analises");
+  const c = (n: string) => coluna_(cab, n);
+  const minhas = linhas.filter((l) => String(l[c("usuario_id")]).trim() === usuarioId);
+  if (!minhas.length) return null;
+  const l = minhas[minhas.length - 1];
+  const porItem = new Map(RUBRICA_PERFIL.ITENS.map((i) => [i.item as string, i]));
+  let salvos: { item: string; nota: number | null; motivo: string; fonte?: string }[] = [];
+  try { salvos = JSON.parse(String(l[c("itens_json")])); } catch (_) { salvos = []; }
+  const itens: ItemAnalise[] = salvos.filter((x) => porItem.has(x.item)).map((x) => {
+    const i: ItemAnalise = {
+      item: x.item, nome: porItem.get(x.item)!.nome, pontos: porItem.get(x.item)!.pontos,
+      nota: x.nota, motivo: String(x.motivo ?? ""),
+    };
+    if (x.fonte === "print") i.fonte = "print";
+    return i;
+  });
+  const total = Number(l[c("total")]) || 0;
+  const criado = l[c("criado_em")];
+  return {
+    curriculoId: String(l[c("curriculo_id")]),
+    resultado: {
+      id: String(l[c("analise_id")]),
+      criadoEm: criado instanceof Date ? criado.toISOString() : String(criado),
+      total,
+      maximo: total + itens.filter((i) => i.nota === null).reduce((n, i) => n + i.pontos, 0),
+      parcial: verdadeiro_(l[c("parcial")]),
+      itens,
+    },
+  };
+}
+
+/** Grava uma análise na aba Analises e devolve o resultado (total, máximo e parcial calculados aqui). */
+function gravarAnalise_(usuarioId: string, curriculoId: string, itens: ItemAnalise[]): ResultadoAnalise {
+  const total = itens.reduce((n, i) => n + (i.nota ?? 0), 0);
+  const maximo = total + itens.filter((i) => i.nota === null).reduce((n, i) => n + i.pontos, 0);
+  const parcial = itens.some((i) => i.nota === null);
+  const agora = new Date();
+  const id = Utilities.getUuid();
+  anexarLinha_("Analises", {
+    analise_id: id, usuario_id: usuarioId, curriculo_id: curriculoId, rubrica_versao: `${RUBRICA_PERFIL.ID}@${RUBRICA_PERFIL.VERSAO}`,
+    total, parcial,
+    itens_json: JSON.stringify(itens.map((i) => (i.fonte ? { item: i.item, nota: i.nota, motivo: i.motivo, fonte: i.fonte } : { item: i.item, nota: i.nota, motivo: i.motivo }))),
+    criado_em: agora,
+  });
+  return { id, criadoEm: agora.toISOString(), total, maximo, parcial, itens };
+}
 
 /** Rubrica da aba (a versão atual); o nome de cada item vem do código. */
 function rubricaAtual_(): ItemAnalise[] {

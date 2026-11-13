@@ -87,14 +87,19 @@ function contarPaginasPdf_(blob: GoogleAppsScript.Base.Blob): number | null {
  * Salva o arquivo na pasta do usuário. A pasta é criada no primeiro upload e o ID vai
  * para Usuarios.pasta_id; se a pasta guardada sumiu, cria outra uma vez.
  */
-function salvarNaPastaDoUsuario_(usuarioId: string, nome: string, blob: GoogleAppsScript.Base.Blob): DriveV3.Arquivo {
+function salvarNaPastaDoUsuario_(
+  usuarioId: string,
+  nome: string,
+  blob: GoogleAppsScript.Base.Blob,
+  mimeType = "application/pdf",
+): DriveV3.Arquivo {
   let pasta = pastaDoUsuario_(usuarioId, false);
   try {
-    return Drive.Files.create({ name: nome, parents: [pasta], mimeType: "application/pdf" }, blob);
+    return Drive.Files.create({ name: nome, parents: [pasta], mimeType }, blob);
   } catch (e) {
     if (!/not ?found|404/i.test(String(e))) throw e;
     pasta = pastaDoUsuario_(usuarioId, true);
-    return Drive.Files.create({ name: nome, parents: [pasta], mimeType: "application/pdf" }, blob);
+    return Drive.Files.create({ name: nome, parents: [pasta], mimeType }, blob);
   }
 }
 

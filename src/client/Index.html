@@ -139,6 +139,25 @@
             <p class="muted small">A IA dá nota de 0 a 100 ao PDF do LinkedIn mais recente, em 12 itens. Leva até um minuto.</p>
             <p id="erro-analise" class="erro" role="alert"></p>
             <div id="resultado-analise"></div>
+            <form id="form-prints" class="stack bloco-prints" novalidate hidden>
+              <h3>Complete a nota com prints</h3>
+              <p class="muted small">O PDF não mostra foto, banner, Destaques e Atividade (30 pontos). Tire prints da tela do seu perfil no LinkedIn e envie aqui: a IA avalia esses itens. Pode mandar só um ou dois. Os prints ficam na sua pasta privada e são apagados 30 dias após o envio; a nota fica.</p>
+              <div>
+                <label for="print-topo">1. Topo do perfil: foto, banner e título juntos</label>
+                <input type="file" id="print-topo" data-tipo="topo" accept="image/png,image/jpeg,image/webp">
+              </div>
+              <div>
+                <label for="print-destaques">2. Seção Destaques (logo abaixo do Sobre)</label>
+                <input type="file" id="print-destaques" data-tipo="destaques" accept="image/png,image/jpeg,image/webp">
+              </div>
+              <div>
+                <label for="print-atividade">3. Aba Atividade, com o tempo dos últimos posts e comentários ("3 d", "2 sem")</label>
+                <input type="file" id="print-atividade" data-tipo="atividade" accept="image/png,image/jpeg,image/webp">
+              </div>
+              <p id="erro-prints" class="erro" role="alert"></p>
+              <p id="msg-prints" class="msg" role="status" aria-live="polite"></p>
+              <div><button class="btn prim" type="submit">Avaliar prints</button></div>
+            </form>
           </div>
         </div>
 
@@ -262,6 +281,8 @@
     }
 
     function desenharAnalise(a) {
+      // Os prints completam uma análise que já existe.
+      el("form-prints").hidden = !a;
       if (!a) { el("resultado-analise").replaceChildren(h("p", { class: "muted small" }, "Nenhuma análise ainda.")); return; }
       var quando = new Date(a.criadoEm);
       var resumo = a.parcial
@@ -275,9 +296,68 @@
           var classe = i.nota == null ? "" : i.nota >= i.pontos * 0.8 ? "ok" : i.nota >= i.pontos * 0.4 ? "warn" : "bad";
           return h("div", { class: "item-ficha" },
             h("div", { class: "row entre" }, h("b", {}, i.nome), h("span", { class: "chip " + classe }, nota)),
-            h("div", { class: "small" }, i.motivo));
+            h("div", { class: "small" }, i.motivo),
+            i.fonte === "print" ? h("div", { class: "small muted" }, "Avaliado pelo print.") : null);
         })));
     }
+
+    // ---------- Prints do perfil (E4-03) ----------
+    // O navegador reduz o print para no máximo 1568 px no lado maior (o que a IA usa)
+    // e converte para JPEG: o envio fica pequeno e os metadados da imagem não vão junto.
+    var MAX_LADO_PRINT = 1568, MAX_PRINT_ORIGINAL = 20 * 1024 * 1024, MAX_PRINT_ENVIO = 2 * 1024 * 1024;
+
+    function prepararPrint(arquivo, pronto, falha) {
+      if (!/^image\/(png|jpeg|webp)$/.test(arquivo.type)) { falha("Envie o print como imagem PNG, JPEG ou WebP."); return; }
+      if (arquivo.size > MAX_PRINT_ORIGINAL) { falha("A imagem passa de 20 MB."); return; }
+      var url = URL.createObjectURL(arquivo);
+      var img = new Image();
+      img.onerror = function () { URL.revokeObjectURL(url); falha("Não deu para abrir a imagem. Tente outro print."); };
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var escala = Math.min(1, MAX_LADO_PRINT / Math.max(img.naturalWidth, img.naturalHeight));
+        var canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff"; // PNG transparente não vira fundo preto no JPEG
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        var b64 = canvas.toDataURL("image/jpeg", 0.85).replace(/^data:[^,]*,/, "");
+        if (b64.length * 3 / 4 > MAX_PRINT_ENVIO) { falha("O print ficou grande demais. Tente um print menor."); return; }
+        pronto(b64);
+      };
+      img.src = url;
+    }
+
+    el("form-prints").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var form = ev.target;
+      var entradas = Array.prototype.filter.call(form.querySelectorAll("input[type=file]"), function (i) { return i.files[0]; });
+      el("erro-prints").textContent = ""; el("msg-prints").textContent = "";
+      if (!entradas.length) { el("erro-prints").textContent = "Escolha pelo menos um print."; return; }
+      ocupado(form, true);
+      el("msg-prints").textContent = "Preparando os prints…";
+      var prints = [], pendentes = entradas.length, erro = null;
+      entradas.forEach(function (entrada) {
+        prepararPrint(entrada.files[0], function (b64) {
+          prints.push({ tipo: entrada.getAttribute("data-tipo"), base64: b64 });
+          if (--pendentes === 0) enviar();
+        }, function (msg) {
+          erro = erro || (entrada.labels && entrada.labels[0] ? entrada.labels[0].textContent + ": " : "") + msg;
+          if (--pendentes === 0) enviar();
+        });
+      });
+      function enviar() {
+        if (erro) { ocupado(form, false); el("msg-prints").textContent = ""; el("erro-prints").textContent = erro; return; }
+        el("msg-prints").textContent = "Avaliando… pode levar até um minuto.";
+        chamar("avaliarPrints", [tokenAtual, { prints: prints }], function (a) {
+          ocupado(form, false);
+          form.reset();
+          el("msg-prints").textContent = "Prints avaliados. A nota foi atualizada.";
+          desenharAnalise(a);
+        }, function (msg) { ocupado(form, false); el("msg-prints").textContent = ""; el("erro-prints").textContent = msg; });
+      }
+    });
 
     el("analisar").addEventListener("click", function () {
       var botao = el("analisar");

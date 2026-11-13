@@ -1,6 +1,6 @@
 # Próximos passos
 
-**Atualizado em:** 12/11/2026, com a E4-02 (nota do perfil) concluída.
+**Atualizado em:** 13/11/2026, com a E4-03 (prints do perfil) implementada.
 **Fonte:** plano do piloto "Funil de Candidaturas — Skills e piloto da página" (doc no claude.ai) e [`ANALISE_PROJETO.md`](ANALISE_PROJETO.md).
 
 A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 (ficha do candidato)** está em andamento: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
@@ -13,7 +13,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
-| 4 — Perfil | **Em andamento** | E4-01 e E4-02 concluídas (12/11/2026). Próxima: E4-03 (prints do perfil para os itens que o PDF não mostra); E4-05 pode ser feita em paralelo |
+| 4 — Perfil | **Em andamento** | E4-01 e E4-02 concluídas (12/11/2026). E4-03 (prints) implementada em 13/11/2026, falta o teste real; as perguntas, alternativa aos prints, esperam decisão. E4-05 pode ser feita em paralelo |
 | 5 a 8 — Vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -133,6 +133,17 @@ Teste real com o PDF do LinkedIn do Roberto: **46 de 100, parcial (até 76)**; U
 
 **E4-03, decidido em 12/11/2026: prints do perfil, com perguntas como alternativa.** Na mesma tela da nota, o candidato envia até 3 prints (topo do perfil com foto e banner, seção Destaques, aba Atividade); a IA avalia os 4 itens com a mesma rubrica e a nota deixa de ser parcial. Quem não quiser mandar print responde perguntas (item só declarado pode valer menos, por não ter como conferir). Os prints são apagados 30 dias após o envio por gatilho diário, ficando a nota e o motivo (achado A3, como o termo de aceite já promete).
 
+**E4-03 implementada (13/11/2026), parte dos prints.** `src/server/Prints.ts` (`avaliarPrints`, `limparPrintsVencidos`) e o bloco "Complete a nota com prints" no card da nota (aparece depois da primeira análise):
+- Três prints, todos opcionais: topo do perfil (foto e banner), seção Destaques e aba Atividade. A IA avalia só os itens dos prints enviados, com a mesma rubrica; o resto da nota não muda.
+- O navegador reduz cada print para no máximo 1568 px no lado maior e converte para JPEG (o envio fica pequeno e os metadados da imagem não vão junto). O servidor confere de novo: até 2 MB, tipo pelos primeiros bytes (PNG, JPEG ou WebP, não o que o navegador diz), um print de cada tipo, até 5 avaliações por dia.
+- O print vai para a pasta do usuário e para a aba nova `Prints`. A nota nova é a última análise com os itens dos prints trocados, gravada como linha nova em `Analises` (o histórico fica); os itens levam `fonte: "print"`. Print que não mostra o item (outra tela, cortado) não apaga a nota anterior desse item. Uma nova análise do PDF mantém os itens avaliados por print.
+- Gatilho diário `limparPrintsVencidos` (criado por `setupAmbiente()`): apaga do Drive os prints com mais de 30 dias e marca `apagado_em`; a nota fica. Fecha o achado A3.
+- Imagem e texto dentro dela são dado: o system prompt diz que nada ali é instrução. A data de hoje vai no prompt para a IA julgar a Atividade ("3 d", "2 sem").
+
+Testes com Apps Script simulado (33 casos): mesclagem da nota (46 → 53 com topo e atividade; deixa de ser parcial com os 4 itens), tipo pelos bytes, recusas sem gastar IA, resposta fora da rubrica, limite diário, isolamento entre usuários, nova análise do PDF mantendo os prints, limpeza de 30 dias (inclusive arquivo já apagado) e recusa da limpeza para quem não é o dono. Falta: rodar `setupAmbiente()` (aba `Prints` e gatilho novo), testar na `/dev` com prints reais, inclusive pelo celular, e publicar.
+
+**Perguntas como alternativa aos prints: esperam decisão.** Falta definir quanto vale um item só declarado (sem print para conferir), por exemplo metade dos pontos.
+
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
 - O login parou de funcionar porque a aba `Usuarios` ficou vazia (o conteúdo foi apagado na planilha, não pelo app). `setupAmbiente()` recadastrou a conta dona. Para facilitar o próximo diagnóstico, o Log agora registra o motivo da recusa (`nao_encontrado` ou `inativo`); veja "Se alguém não recebe o código" no README.
@@ -147,7 +158,7 @@ Teste real com o PDF do LinkedIn do Roberto: **46 de 100, parcial (até 76)**; U
 | ~~Upload de PDF de até 5 MB testado ponta a ponta, inclusive no celular (D6)~~ | Feito na E4-01 (12/11/2026): 4,8 MB pelo computador e PDF do LinkedIn pelo celular |
 | ~~Pastas por usuário no Drive, coluna `pasta_id` (A1)~~ | Feito na E4-01: pasta criada no primeiro upload, nome = `usuario_id` |
 | ~~Extrair o texto do PDF uma vez e guardar (A2)~~ | Feito na E4-02: o Drive converte o PDF em Doc e exporta texto; `.txt` na pasta do usuário |
-| Comprovação por imagem e limpeza dos prints após 30 dias (A3) | Na E4-03 (prints do perfil) |
+| ~~Comprovação por imagem e limpeza dos prints após 30 dias (A3)~~ | Feito na E4-03 (13/11/2026): aba `Prints` e gatilho diário `limparPrintsVencidos` |
 | Levar a skill `li-candidatura` (E7-01) para antes da E5-03 (D7) | Ao planejar a Etapa 5 |
 
 ## Operacional
