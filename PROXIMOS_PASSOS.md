@@ -167,3 +167,17 @@ Falta: publicar o ajuste (`npm run deploy`), testar com prints reais (computador
 - Tirar `C:\Github\me-contrata` da replicação do Google Drive: ela já criou cópias "(1)" de arquivos antigos, inclusive dentro de `.git`. O GitHub faz o papel de backup.
 - Definir o teto de gasto mensal no Console da Anthropic (P0-03).
 - Projeto Apps Script antigo (`1FSBG-ld6…`, de 09/11, outro computador): apagar em script.google.com se não for mais usado.
+
+## Para o futuro: vagas remotas fora do Brasil
+
+Registrado em 13/11/2026, sem etapa no plano ainda. A ideia é ampliar o agente de vagas, que hoje só coleta fontes brasileiras (Gupy, Catho, InHire, InfoJobs, Sólides, Michael Page e empresas-alvo), para sites de recrutamento remoto do exterior. Novos sites indicados entram na tabela.
+
+| Site | Tipo | Indicado em | Situação |
+|---|---|---|---|
+| https://www.revolut.com/careers/ | Página de carreira de empresa (Revolut) | 13/11/2026 | Não avaliado |
+
+Perguntas a responder antes de integrar:
+- Formato: página de carreira de empresa (como as empresas-alvo em `empresas_carreira` da `ListasBusca`) ou agregador de vagas remotas.
+- Como cada site entrega as vagas (API, JSON na página ou HTML) e se os termos de uso permitem coleta automática.
+- Filtros que as Preferências ainda não têm: país ou fuso aceito, idioma da vaga, forma de contratação (contractor, EOR, PJ) e moeda.
+- Nota: `ufs` e `cidades` só cobrem o Brasil, e quem não fala inglês perde 30 pontos em "exige idioma".
