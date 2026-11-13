@@ -27,7 +27,7 @@ function chamarIAJson_(
   usuarioId: string,
   funcao: string,
   system: string,
-  conteudo: string,
+  conteudo: string | object[],
   schema: object,
   esforco: "low" | "medium" | "high" = "medium",
 ): unknown {

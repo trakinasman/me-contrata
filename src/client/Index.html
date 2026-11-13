@@ -131,6 +131,15 @@
             <h3>Arquivos enviados</h3>
             <div id="lista-cv"><p class="muted small">Carregando…</p></div>
           </div>
+          <div class="card stack">
+            <div class="row entre">
+              <h2>Nota do perfil</h2>
+              <button class="btn prim mini" type="button" id="analisar">Analisar meu LinkedIn</button>
+            </div>
+            <p class="muted small">A IA dá nota de 0 a 100 ao PDF do LinkedIn mais recente, em 12 itens. Leva até um minuto.</p>
+            <p id="erro-analise" class="erro" role="alert"></p>
+            <div id="resultado-analise"></div>
+          </div>
         </div>
 
         <div id="aba-dados" class="card stack" hidden>
@@ -243,8 +252,41 @@
         a.classList.toggle("ativo", a.getAttribute("data-aba") === aba);
       });
       if (aba === "ficha" && !ficha) carregarFicha();
-      if (aba === "curriculo" && !curriculos) carregarCurriculos();
+      if (aba === "curriculo" && !curriculos) { carregarCurriculos(); carregarAnalise(); }
     }
+
+    // ---------- Nota do perfil (E4-02) ----------
+    function carregarAnalise() {
+      el("resultado-analise").replaceChildren();
+      chamar("ultimaAnalise", [tokenAtual], desenharAnalise, function (msg) { el("erro-analise").textContent = msg; });
+    }
+
+    function desenharAnalise(a) {
+      if (!a) { el("resultado-analise").replaceChildren(h("p", { class: "muted small" }, "Nenhuma análise ainda.")); return; }
+      var quando = new Date(a.criadoEm);
+      var resumo = a.parcial
+        ? "Nota parcial: " + a.total + " de 100. Os itens não avaliados podem levar a até " + a.maximo + "."
+        : "Nota: " + a.total + " de 100.";
+      el("resultado-analise").replaceChildren(
+        h("p", {}, h("b", {}, resumo)),
+        h("p", { class: "small muted" }, "Análise de " + (isNaN(quando) ? a.criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))),
+        h("div", { class: "stack" }, a.itens.map(function (i) {
+          var nota = i.nota === null ? "não avaliado" : i.nota + " / " + i.pontos;
+          var classe = i.nota === null ? "" : i.nota >= i.pontos * 0.8 ? "ok" : i.nota >= i.pontos * 0.4 ? "warn" : "bad";
+          return h("div", { class: "item-ficha" },
+            h("div", { class: "row entre" }, h("b", {}, i.nome), h("span", { class: "chip " + classe }, nota)),
+            h("div", { class: "small" }, i.motivo));
+        })));
+    }
+
+    el("analisar").addEventListener("click", function () {
+      var botao = el("analisar");
+      el("erro-analise").textContent = "";
+      botao.disabled = true;
+      el("resultado-analise").replaceChildren(h("p", { class: "muted small" }, "Analisando… pode levar até um minuto."));
+      chamar("analisarPerfil", [tokenAtual], function (a) { botao.disabled = false; desenharAnalise(a); },
+        function (msg) { botao.disabled = false; el("erro-analise").textContent = msg; carregarAnalise(); });
+    });
 
     // ---------- Currículo (E4-01) ----------
     // O arquivo vai em base64; o servidor confere de novo tamanho e assinatura de PDF.

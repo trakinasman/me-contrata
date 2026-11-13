@@ -17,7 +17,7 @@ const ESQUEMA: Record<string, string[]> = {
   // excluir, empresas_carreira, grupo:<nome>...). Termos separados por vírgula. O agente só usa
   // as linhas `aprovada`; o que a IA gera entra como `a_revisar`.
   ListasBusca: ["usuario_id", "lista", "termos", "status", "origem", "atualizado_em"],
-  Curriculos: ["curriculo_id", "usuario_id", "tipo", "drive_file_id", "vaga_id", "paginas", "criado_em"],
+  Curriculos: ["curriculo_id", "usuario_id", "tipo", "drive_file_id", "vaga_id", "paginas", "criado_em", "texto_drive_id"],
   Analises: ["analise_id", "usuario_id", "curriculo_id", "rubrica_versao", "total", "parcial", "itens_json", "criado_em"],
   Vagas: ["vaga_id", "fonte", "fonte_id", "empresa", "titulo", "link", "local", "modalidade", "publicada_em", "coletada_em", "vista_por_ultimo_em"],
   VagasCandidato: ["usuario_id", "vaga_id", "nota_regras", "motivos", "nota_ia", "descartada", "motivo_descarte", "vista_em", "selecionada_em"],

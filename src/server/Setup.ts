@@ -38,6 +38,7 @@ function setupAmbiente(): void {
   }
 
   setupPlanilha_(ss);
+  garantirRubricas_();
   cadastrarDonoComoAdmin_();
   criarGatilhoLimpeza_();
   Logger.log("Ambiente pronto. Planilha: " + ss.getUrl());
