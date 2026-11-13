@@ -96,6 +96,7 @@
         <h1>Perfil</h1>
         <div class="tabs">
           <a href="#perfil/ficha" data-aba="ficha">Ficha</a>
+          <a href="#perfil/curriculo" data-aba="curriculo">Currículo</a>
           <a href="#perfil/dados" data-aba="dados">Meus dados</a>
         </div>
 
@@ -105,6 +106,31 @@
           <p id="msg-ficha" class="msg" role="status" aria-live="polite"></p>
           <p id="erro-ficha" class="erro" role="alert"></p>
           <div id="secoes-ficha" class="stack"></div>
+        </div>
+
+        <div id="aba-curriculo" class="stack" hidden>
+          <form id="form-cv" class="card stack" novalidate>
+            <h2>Enviar currículo</h2>
+            <p class="muted small">PDF de até 5 MB: seu currículo ou o PDF do seu perfil do LinkedIn (no perfil, "Mais" &gt; "Salvar como PDF"). O arquivo fica numa pasta privada sua.</p>
+            <div>
+              <label for="cv-tipo">O que é este arquivo?</label>
+              <select id="cv-tipo">
+                <option value="base">Meu currículo</option>
+                <option value="linkedin">PDF do perfil do LinkedIn</option>
+              </select>
+            </div>
+            <div>
+              <label for="cv-arquivo">Arquivo PDF</label>
+              <input type="file" id="cv-arquivo" accept="application/pdf,.pdf">
+            </div>
+            <p id="erro-cv" class="erro" role="alert"></p>
+            <p id="msg-cv" class="msg" role="status" aria-live="polite"></p>
+            <div><button class="btn prim" type="submit">Enviar</button></div>
+          </form>
+          <div class="card stack">
+            <h3>Arquivos enviados</h3>
+            <div id="lista-cv"><p class="muted small">Carregando…</p></div>
+          </div>
         </div>
 
         <div id="aba-dados" class="card stack" hidden>
@@ -133,7 +159,7 @@
     function salvarToken(t) { tokenAtual = t; try { localStorage.setItem(CHAVE, t); } catch (e) {} }
     // Sem sessão, nada do usuário anterior pode continuar na memória da página.
     function apagarToken() {
-      tokenAtual = null; ficha = null; editando = null;
+      tokenAtual = null; ficha = null; editando = null; curriculos = null;
       try { localStorage.removeItem(CHAVE); } catch (e) {}
     }
 
@@ -209,14 +235,65 @@
         a.classList.toggle("ativo", a.getAttribute("data-pag") === pag);
       });
       if (visivel !== "perfil") return;
-      var aba = partes[1] === "dados" ? "dados" : "ficha";
+      var aba = ["dados", "curriculo"].indexOf(partes[1]) >= 0 ? partes[1] : "ficha";
       el("aba-ficha").hidden = aba !== "ficha";
+      el("aba-curriculo").hidden = aba !== "curriculo";
       el("aba-dados").hidden = aba !== "dados";
       Array.prototype.forEach.call(document.querySelectorAll(".tabs a"), function (a) {
         a.classList.toggle("ativo", a.getAttribute("data-aba") === aba);
       });
       if (aba === "ficha" && !ficha) carregarFicha();
+      if (aba === "curriculo" && !curriculos) carregarCurriculos();
     }
+
+    // ---------- Currículo (E4-01) ----------
+    // O arquivo vai em base64; o servidor confere de novo tamanho e assinatura de PDF.
+    var curriculos = null;
+    var MAX_CV = 5 * 1024 * 1024;
+    var NOME_TIPO_CV = { base: "Currículo", linkedin: "PDF do LinkedIn" };
+
+    function carregarCurriculos() {
+      el("lista-cv").replaceChildren(h("p", { class: "muted small" }, "Carregando…"));
+      chamar("listarCurriculos", [tokenAtual], function (r) { curriculos = r.curriculos; desenharCurriculos(); }, function (msg) {
+        el("lista-cv").replaceChildren(h("p", { class: "erro" }, msg),
+          h("button", { class: "btn mini", type: "button", onclick: carregarCurriculos }, "Tentar de novo"));
+      });
+    }
+
+    function desenharCurriculos() {
+      if (!curriculos.length) { el("lista-cv").replaceChildren(h("p", { class: "muted small" }, "Nenhum arquivo enviado ainda.")); return; }
+      el("lista-cv").replaceChildren.apply(el("lista-cv"), curriculos.map(function (c) {
+        var quando = new Date(c.criadoEm);
+        var data = isNaN(quando) ? c.criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+        return h("div", { class: "row entre item-ficha" },
+          h("span", {}, NOME_TIPO_CV[c.tipo] || c.tipo),
+          h("span", { class: "small muted" }, data + (c.paginas ? " · " + c.paginas + (c.paginas === 1 ? " página" : " páginas") : "")));
+      }));
+    }
+
+    el("form-cv").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var form = ev.target, arq = el("cv-arquivo").files[0];
+      el("erro-cv").textContent = ""; el("msg-cv").textContent = "";
+      if (!arq) { el("erro-cv").textContent = "Escolha o arquivo PDF."; return; }
+      if (!/\.pdf$/i.test(arq.name) && arq.type !== "application/pdf") { el("erro-cv").textContent = "Envie um arquivo PDF."; return; }
+      if (arq.size > MAX_CV) { el("erro-cv").textContent = "O arquivo passa de 5 MB."; return; }
+      ocupado(form, true);
+      el("msg-cv").textContent = "Enviando…";
+      var leitor = new FileReader();
+      leitor.onerror = function () { ocupado(form, false); el("msg-cv").textContent = ""; el("erro-cv").textContent = "Não deu para ler o arquivo. Tente de novo."; };
+      leitor.onload = function () {
+        var b64 = String(leitor.result).replace(/^data:[^,]*,/, "");
+        chamar("enviarCurriculo", [tokenAtual, { tipo: el("cv-tipo").value, base64: b64 }], function (r) {
+          ocupado(form, false);
+          form.reset();
+          curriculos = r.curriculos;
+          desenharCurriculos();
+          el("msg-cv").textContent = "Arquivo enviado.";
+        }, function (msg) { ocupado(form, false); el("msg-cv").textContent = ""; el("erro-cv").textContent = msg; });
+      };
+      leitor.readAsDataURL(arq);
+    });
 
     // ---------- Ficha (E2-01) ----------
     // Todo texto da ficha entra na página por textContent (via h), nunca por innerHTML.

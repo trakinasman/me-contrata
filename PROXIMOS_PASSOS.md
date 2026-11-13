@@ -1,6 +1,6 @@
 # Próximos passos
 
-**Atualizado em:** 12/11/2026, com a Etapa 3 (E3-01 a E3-05) concluída.
+**Atualizado em:** 12/11/2026, com a E4-01 (upload do PDF) concluída.
 **Fonte:** plano do piloto "Funil de Candidaturas — Skills e piloto da página" (doc no claude.ai) e [`ANALISE_PROJETO.md`](ANALISE_PROJETO.md).
 
 A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 (ficha do candidato)** está em andamento: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
@@ -13,7 +13,8 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
-| 4 a 8 — Perfil, vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
+| 4 — Perfil | **Em andamento** | E4-01 concluída (12/11/2026). Próxima: E4-02 (análise do perfil pela IA); E4-05 pode ser feita em paralelo |
+| 5 a 8 — Vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
 
@@ -110,6 +111,19 @@ Teste real: com a mesma busca da execução das 19:38, os dois usuários tiveram
 
 As linhas antigas de `VagasCandidato` (antes da E3-05) estão com `selecionada_em` vazio até o agente selecioná-las de novo.
 
+## Etapa 4 — Perfil
+
+Do plano do piloto: E4-01 upload do PDF; E4-02 `analisarPerfil()` (PDF + rubrica de 12 itens + ficha, resposta em JSON); E4-03 perguntas sobre o que o PDF não mostra; E4-04 reescritas (título, Sobre, experiência atual); E4-05 `humanizarPT()` (porta do `humanize.py`, sem dependência); E4-06 histórico da nota.
+
+**E4-01 concluída (12/11/2026, versão @11).** Aba Perfil > Currículo: o candidato escolhe "Meu currículo" ou "PDF do perfil do LinkedIn" e envia um PDF de até 5 MB; embaixo, a lista dos arquivos enviados (data e páginas). `src/server/Curriculos.ts` (`enviarCurriculo`, `listarCurriculos`):
+- O servidor confere de novo o que a página já conferiu: tamanho (até 5 MB), base64 válido e assinatura `%PDF-`. Limite de 10 envios por usuário por dia.
+- Pasta do usuário criada no primeiro upload dentro da pasta raiz (achado A1): nome = `usuario_id`, nunca o e-mail; ID em `Usuarios.pasta_id`; se a pasta guardada sumir, cria outra uma vez. Nome do arquivo gerado no servidor (`<tipo>-<data-hora>.pdf`).
+- Registro na aba `Curriculos` (páginas contadas no PDF quando possível) e no `Log`. A exclusão LGPD já apaga a pasta inteira.
+
+Testes no ambiente real: currículo de 329 KB pelo computador (2 páginas, pasta criada, arquivo privado); arquivo falso renomeado para `.pdf` recusado pelo servidor sem gravar nada; PDF de mais de 5 MB recusado pela página antes de enviar; PDF do LinkedIn de 69 KB pelo celular (5 páginas, mesma pasta); PDF de 4,8 MB pelo computador (cerca de 7 s no servidor). Fecha a D6.
+
+Limpeza pendente: apagar do Drive e da aba `Curriculos` (linha de 12/11 22:45:50) o PDF de teste de 4,8 MB.
+
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
 - O login parou de funcionar porque a aba `Usuarios` ficou vazia (o conteúdo foi apagado na planilha, não pelo app). `setupAmbiente()` recadastrou a conta dona. Para facilitar o próximo diagnóstico, o Log agora registra o motivo da recusa (`nao_encontrado` ou `inativo`); veja "Se alguém não recebe o código" no README.
@@ -121,8 +135,9 @@ As linhas antigas de `VagasCandidato` (antes da E3-05) estão com `selecionada_e
 | ~~Gatilho diário para apagar sessões vencidas da aba `Sessoes`~~ | Feito: `limparSessoesVencidas`, gatilho criado por `setupAmbiente()` (pede autorização nova do escopo `script.scriptapp`) |
 | ~~Completar validações da planilha: UFs, `ativo`, Preferencias (D1)~~ | Feito com a E2-01 (`VALIDACOES_ESPECIAIS`). Rodar `setupAmbiente()` para aplicar. A validação no servidor das Preferencias vem com a tela de Preferências |
 | Modelo de recomendações com ID e textos gerados (D3) | Antes da Etapa 6 |
-| Upload de PDF de até 5 MB testado ponta a ponta, inclusive no celular (D6) | Na E4-01 |
-| Pastas por usuário no Drive, coluna `pasta_id` (A1) | No primeiro upload (E4-01) |
+| ~~Upload de PDF de até 5 MB testado ponta a ponta, inclusive no celular (D6)~~ | Feito na E4-01 (12/11/2026): 4,8 MB pelo computador e PDF do LinkedIn pelo celular |
+| ~~Pastas por usuário no Drive, coluna `pasta_id` (A1)~~ | Feito na E4-01: pasta criada no primeiro upload, nome = `usuario_id` |
+| Extrair o texto do PDF uma vez e guardar (A2) | Na E4-02 (primeira leitura do PDF pela IA) |
 | Comprovação por imagem e limpeza dos prints após 30 dias (A3) | Na Etapa 4 |
 | Levar a skill `li-candidatura` (E7-01) para antes da E5-03 (D7) | Ao planejar a Etapa 5 |
 
