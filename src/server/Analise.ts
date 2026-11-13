@@ -30,8 +30,9 @@ const RUBRICA_PERFIL = {
     { item: "activity", nome: "Atividade", pontos: 10, criterio: "Postou ou comentou nos últimos sete dias. Atividade vazia passa a impressão de perfil abandonado." },
     { item: "contact", nome: "Contato", pontos: 6, criterio: "URL personalizada, e-mail ou link de agenda funcionando nas informações de contato e o mesmo nome de usuário das outras redes." },
   ],
-  // O PDF exportado do LinkedIn não traz estes itens: viram perguntas na E4-03.
-  NAO_VISIVEIS: ["featured", "banner", "photo", "activity"],
+  // O PDF exportado do LinkedIn não traz estes itens: viram print ou pergunta na E4-03.
+  // Recomendações também não vêm no PDF (conferido em 13/11/2026 no PDF do Roberto, que tem 3).
+  NAO_VISIVEIS: ["featured", "banner", "photo", "activity", "recommendations"],
 } as const;
 
 const ANALISE = {
@@ -264,6 +265,8 @@ function systemAnalise_(rubrica: ItemAnalise[]): string {
     "",
     `O PDF não mostra ${naoVisiveis.join(", ")}: para esses, avaliado = false e nota = 0.`,
     "Para os outros, avaliado = true e nota inteira de 0 até os pontos do item. Se o perfil não tem a seção, nota 0.",
+    "skills: o PDF mostra as competências principais, mas não os endossos. Avalie a escolha das três primeiras e não tire",
+    "pontos por endosso que não aparece; no motivo, diga que os endossos se conferem pelo print da seção Competências.",
     "Motivo: uma ou duas frases em português do Brasil, diretas, dizendo o que falta para a nota cheia",
     "(ou por que está cheia). Sem travessão. Cite o perfil quando ajudar.",
     "Datas: o tempo mostrado ao lado da empresa soma todos os cargos nela (ex.: analista e depois coordenador).",

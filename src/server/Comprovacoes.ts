@@ -1,13 +1,15 @@
 /**
- * Itens do perfil que o PDF não mostra (E4-03): destaques, banner, foto e atividade.
+ * Itens do perfil que o PDF não mostra (E4-03): destaques, banner, foto, atividade e
+ * recomendações, e os endossos das competências.
  *
- * - O candidato manda até 3 prints (topo do perfil, Destaques, Atividade). A página reduz a
+ * - O candidato manda até 5 prints (topo do perfil, Destaques, Atividade, Recomendações e
+ *   Competências). A página reduz a
  *   imagem antes de enviar; o servidor confere tipo (JPEG/PNG pela assinatura) e tamanho.
  * - A IA olha os prints com a mesma rubrica. O texto dentro das imagens é dado, nunca instrução.
  * - Quem não manda print responde uma pergunta por item. Item só declarado vale no máximo 70%
  *   dos pontos (sem como conferir); "em parte" vale 35%.
  * - A nota completa vira uma nova linha em Analises (o histórico fica, E4-06): os itens do PDF
- *   vêm da última análise e só os 4 itens são avaliados de novo.
+ *   vêm da última análise e só os itens dos prints e das respostas são avaliados de novo.
  * - Os prints ficam na pasta do usuário e são apagados 30 dias depois por gatilho diário
  *   (achado A3, como o termo de aceite promete); a nota e o motivo ficam.
  */
@@ -17,7 +19,10 @@ const COMPROVACAO = {
   POR_DIA: 5,
   DIAS_GUARDA: 30,
   // Que itens cada print mostra.
-  ITENS_DO_PRINT: { topo: ["photo", "banner"], destaques: ["featured"], atividade: ["activity"] } as Record<string, string[]>,
+  ITENS_DO_PRINT: {
+    topo: ["photo", "banner"], destaques: ["featured"], atividade: ["activity"],
+    recomendacoes: ["recommendations"], competencias: ["skills"],
+  } as Record<string, string[]>,
   // Peso de cada resposta declarada (sem print).
   PESO_RESPOSTA: { sim: 0.7, em_parte: 0.35, nao: 0 } as Record<string, number>,
 };
@@ -120,7 +125,7 @@ function limparComprovacoesVencidas(): void {
 
 function validarPrints_(v: unknown): PrintComprovacao[] {
   if (v == null) return [];
-  if (!Array.isArray(v) || v.length > 3) throw new Error("Envie no máximo 3 prints.");
+  if (!Array.isArray(v) || v.length > Object.keys(COMPROVACAO.ITENS_DO_PRINT).length) throw new Error("Envie no máximo um print de cada tipo.");
   const vistos = new Set<string>();
   return v.map((p) => {
     const o = (p ?? {}) as { tipo?: unknown; base64?: unknown };
@@ -154,7 +159,10 @@ function validarRespostas_(v: unknown): Record<string, string> {
 /** A IA avalia os itens nos prints. Item que o print não mostrou fica de fora (pode cair na resposta). */
 function avaliarPrints_(usuarioId: string, prints: PrintComprovacao[], itens: ItemAnalise[]): ItemAnalise[] {
   const hoje = Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy");
-  const nomes: Record<string, string> = { topo: "topo do perfil (foto e banner)", destaques: "seção Destaques", atividade: "aba Atividade" };
+  const nomes: Record<string, string> = {
+    topo: "topo do perfil (foto e banner)", destaques: "seção Destaques", atividade: "aba Atividade",
+    recomendacoes: "seção Recomendações (recebidas)", competencias: "seção Competências, com os endossos",
+  };
   const blocos: object[] = [];
   for (const p of prints) {
     blocos.push({ type: "text", text: `Print: ${nomes[p.tipo]}` });
