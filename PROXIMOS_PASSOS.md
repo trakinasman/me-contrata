@@ -13,7 +13,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
-| 4 — Perfil | **Em andamento** | E4-01, E4-02 e E4-03 concluídas (E4-03 testada no ambiente real em 13/11/2026: nota de 46 parcial para 70). Próximas: E4-04 (reescritas); E4-05 pode ser feita em paralelo |
+| 4 — Perfil | **Em andamento** | E4-01, E4-02 e E4-03 concluídas (E4-03 testada no ambiente real em 13/11/2026: nota de 46 parcial para 76, completa). **E4-04 (reescritas) em andamento.** E4-05 pode ser feita em paralelo |
 | 5 a 8 — Vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -148,6 +148,24 @@ Ajuste publicado na versão @15 (13/11/2026). O `.clasp.json` deste computador a
 **Teste real (13/11/2026):** o Roberto mandou os 3 prints pela página. Nota de 46 (parcial, até 76) para **70 de 100**, completa: atividade 10/10, banner 6/6, foto 5/6, Destaques 3/8 (só um item). Prints na pasta dele e em `Comprovacoes`, `nota_completada` no Log, US$ 0,0087 na chamada. Falta o teste pelo celular.
 
 **Recomendações e endossos (13/11/2026):** o PDF exportado do LinkedIn não traz a seção Recomendações (conferido no texto extraído do PDF do Roberto, que tem 3 recomendações de 05/11/2026), e a IA dava 0 de 8 dizendo que o perfil não tinha nenhuma. Também não traz os endossos, e a IA tirava pontos de Competências por isso. Correção: `recommendations` entrou nos itens que o PDF não mostra (sai "não avaliado"); o prompt manda avaliar a escolha das competências sem tirar pontos por endosso invisível; "Completar a nota" ganhou os prints de Recomendações e de Competências (com endossos) e a pergunta de recomendações. Os itens não visíveis no PDF somam agora 38 pontos. Testes com Apps Script simulado: 30 casos. Depois de publicar, rodar `setupAmbiente()`: a validação da coluna `tipo` de `Comprovacoes` precisa aceitar os dois tipos novos.
+
+**Resposta declarada sobrescrevia print (13/11/2026, versão @17).** Um envio com os prints de recomendações e competências e 4 respostas trocou banner, foto e atividade (avaliados por print antes) pelas notas declaradas: o total ficou em 70 em vez de 76. Agora resposta nunca substitui item já avaliado por print, e a página desativa a pergunta desses itens. Depois de reenviar topo e atividade: **76 de 100, completa**, todos os 12 itens avaliados pela melhor fonte (PDF ou print).
+
+**Aprendizados do teste real, requisitos para a E4-04 e a E4-05 (13/11/2026).** Antes de voltar ao código, o título, o Sobre e um Destaque do Roberto foram reescritos à mão nesta conversa. Viraram o gabarito do que o app deve produzir:
+- Só fatos de itens **confirmados** da ficha. O texto atual do perfil serve de referência, não de fonte: o Sobre dele citava duas certificações que não estão na ficha. Trecho sem base sai com [CONFIRMAR].
+- Na escrita à mão, apareceram fatos plausíveis e inventados (componentes do custo, "resultado imediato", "queimar caixa"). A IA vai fazer o mesmo: o prompt precisa proibir, e o candidato precisa revisar antes de publicar.
+- Itens `proibido` entram no prompt como o que nunca afirmar; itens `a_confirmar` não entram. Texto público não sinaliza busca de emprego.
+- Limites: título até 220 caracteres (usar quase tudo); Sobre até 1.400 (rubrica), com quebra de linha depois da abertura, antes do "ver mais"; cargo atual com uma linha de escopo e 2 ou 3 resultados com número.
+- Tom da ficha (Como escrevo, Palavras que uso e evito): abrir com número ou cena, frases de tamanho variado, mérito dividido com o time, fecho curto. Sem travessão, sem aspas curvas.
+- O `humanize.py`/`detect.py` da skill `li-human` mede pronomes e contrações só em inglês: a nota de "voz" não vale para português. A E4-05 (`humanizarPT`) precisa de pronomes e léxico em português.
+
+**E4-04 implementada (13/11/2026).** `src/server/Reescritas.ts` (`gerarReescritas`, `ultimasReescritas`) e o card "Reescritas do perfil" na aba Perfil > Currículo:
+- Gera título, Sobre e descrição do cargo atual a partir do texto do PDF (referência do que existe), da última nota (o motivo de cada item) e da ficha.
+- Ficha separada em fatos (só itens confirmados de Quem sou, Provas, Personalidade e Minhas posições), tom (Como escrevo, Palavras que uso e evito) e proibidos (status proibido e Fora dos limites). Itens a confirmar e vazios ficam de fora. Os proibidos têm limite próprio e nunca são cortados para caber fatos.
+- O prompt segue os aprendizados acima: fatos só da ficha, nada de detalhe plausível inventado, [CONFIRMAR: o que falta] no lugar, sem sinal de busca de emprego, limites e estrutura de cada texto, tom do candidato. A IA devolve também até 6 pontos para conferir antes de publicar.
+- O servidor limpa travessão, aspas curvas, reticências de um caractere e caracteres invisíveis, mantendo as quebras de linha do Sobre, e confere os limites (título 220, Sobre 1.400, cargo 1.200). Fora do limite gera nova tentativa; se falhar de novo, erro. É o começo da E4-05, sem o léxico.
+- Cada geração grava uma versão nova de cada texto na aba `Textos` (`linkedin_titulo`, `linkedin_sobre`, `linkedin_cargo_atual`, sem vaga). Limite de 5 por dia. A página mostra os textos com os [CONFIRMAR] destacados, a contagem de caracteres e um botão Copiar.
+- Testes com Apps Script simulado: 24 casos (o que entra em cada bloco do prompt, isolamento, limpeza, limites com nova tentativa, versões, proibidos na ficha cheia, limite diário). Falta: publicar, gerar com o perfil real do Roberto e comparar com o gabarito escrito à mão.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.

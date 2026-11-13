@@ -168,6 +168,16 @@
             <p id="erro-prints" class="erro" role="alert"></p>
             <div><button class="btn prim" type="submit">Completar a nota</button></div>
           </form>
+          <div class="card stack">
+            <div class="row entre">
+              <h2>Reescritas do perfil</h2>
+              <button class="btn prim mini" type="button" id="reescrever">Gerar reescritas</button>
+            </div>
+            <p class="muted small">A IA reescreve o título, o Sobre e a descrição do seu cargo atual a partir da nota e da sua ficha, só com itens confirmados. Revise antes de publicar: trechos com [CONFIRMAR] não têm base na ficha. Leva até um minuto.</p>
+            <p id="erro-reescrita" class="erro" role="alert"></p>
+            <p id="msg-reescrita" class="msg" role="status" aria-live="polite"></p>
+            <div id="resultado-reescrita" class="stack"></div>
+          </div>
         </div>
 
         <div id="aba-dados" class="card stack" hidden>
@@ -280,7 +290,7 @@
         a.classList.toggle("ativo", a.getAttribute("data-aba") === aba);
       });
       if (aba === "ficha" && !ficha) carregarFicha();
-      if (aba === "curriculo" && !curriculos) { carregarCurriculos(); carregarAnalise(); }
+      if (aba === "curriculo" && !curriculos) { carregarCurriculos(); carregarAnalise(); carregarReescritas(); }
     }
 
     // ---------- Nota do perfil (E4-02) ----------
@@ -395,6 +405,74 @@
       el("resultado-analise").replaceChildren(h("p", { class: "muted small" }, "Analisando… pode levar até um minuto."));
       chamar("analisarPerfil", [tokenAtual], function (a) { botao.disabled = false; desenharAnalise(a); },
         function (msg) { botao.disabled = false; el("erro-analise").textContent = msg; carregarAnalise(); });
+    });
+
+    // ---------- Reescritas do perfil (E4-04) ----------
+    // Texto da IA entra por textContent; [CONFIRMAR] vira destaque, sem innerHTML.
+    function carregarReescritas() {
+      el("resultado-reescrita").replaceChildren();
+      chamar("ultimasReescritas", [tokenAtual], desenharReescritas, function (msg) { el("erro-reescrita").textContent = msg; });
+    }
+
+    function comMarcas(texto) {
+      var frag = document.createDocumentFragment();
+      texto.split(/(\[CONFIRMAR[^\]]*\])/).forEach(function (parte) {
+        if (!parte) return;
+        frag.appendChild(/^\[CONFIRMAR/.test(parte) ? h("span", { class: "confirmar" }, parte) : document.createTextNode(parte));
+      });
+      return frag;
+    }
+
+    // Copia pelo seletor de texto: funciona dentro do iframe do Apps Script, onde a API de área de transferência pode faltar.
+    function copiar(texto, aviso) {
+      var area = h("textarea", { readonly: true, "aria-hidden": "true", style: "position:fixed;left:-9999px;top:0" });
+      area.value = texto;
+      document.body.appendChild(area);
+      area.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      document.body.removeChild(area);
+      aviso.textContent = ok ? "Copiado." : "Não deu para copiar. Selecione o texto e copie à mão.";
+      setTimeout(function () { aviso.textContent = ""; }, 3000);
+    }
+
+    function desenharReescritas(r) {
+      if (!r || !r.textos.length) {
+        el("resultado-reescrita").replaceChildren(h("p", { class: "muted small" }, "Nenhuma reescrita ainda."));
+        return;
+      }
+      var quando = new Date(r.textos[0].criadoEm);
+      var blocos = [h("p", { class: "small muted" }, "Versão de " + (isNaN(quando) ? r.textos[0].criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })))];
+      r.textos.forEach(function (t) {
+        var aviso = h("span", { class: "small muted" });
+        var tamanho = t.conteudo.length + " / " + t.limite + " caracteres";
+        blocos.push(h("div", { class: "stack reescrita" },
+          h("div", { class: "row entre" },
+            h("h3", {}, t.nome),
+            h("span", {}, t.aConfirmar ? h("span", { class: "chip warn" }, t.aConfirmar + " a confirmar") : null, " ",
+              h("span", { class: "small muted" }, tamanho))),
+          h("div", { class: "texto-gerado" }, comMarcas(t.conteudo)),
+          h("div", { class: "row" },
+            h("button", { class: "btn mini", type: "button", onclick: function () { copiar(t.conteudo, aviso); } }, "Copiar"),
+            aviso)));
+      });
+      if (r.conferir && r.conferir.length) {
+        blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira antes de publicar:"),
+          h("ul", {}, r.conferir.map(function (c) { return h("li", {}, c); }))));
+      }
+      el("resultado-reescrita").replaceChildren.apply(el("resultado-reescrita"), blocos);
+    }
+
+    el("reescrever").addEventListener("click", function () {
+      var botao = el("reescrever");
+      el("erro-reescrita").textContent = "";
+      botao.disabled = true;
+      el("msg-reescrita").textContent = "Reescrevendo… pode levar até um minuto.";
+      chamar("gerarReescritas", [tokenAtual], function (r) {
+        botao.disabled = false;
+        el("msg-reescrita").textContent = "";
+        desenharReescritas(r);
+      }, function (msg) { botao.disabled = false; el("msg-reescrita").textContent = ""; el("erro-reescrita").textContent = msg; });
     });
 
     // ---------- Currículo (E4-01) ----------
