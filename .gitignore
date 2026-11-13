@@ -4,3 +4,4 @@ dist/
 .clasprc.json
 *.log
 .env
+*_local.json
