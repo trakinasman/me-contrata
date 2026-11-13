@@ -11,6 +11,8 @@ declare namespace DriveV3 {
 declare const Drive: {
   Files: {
     create(recurso: Partial<DriveV3.Arquivo>, blob?: GoogleAppsScript.Base.Blob): DriveV3.Arquivo;
+    /** Copia; com mimeType de Google Doc, converte (PDF vira Doc, com OCR se preciso). */
+    copy(recurso: Partial<DriveV3.Arquivo>, fileId: string, opcoes?: Record<string, unknown>): DriveV3.Arquivo;
     /** Apaga de vez (sem passar pela lixeira). */
     remove(fileId: string): void;
   };

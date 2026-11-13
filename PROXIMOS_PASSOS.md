@@ -1,6 +1,6 @@
 # Próximos passos
 
-**Atualizado em:** 12/11/2026, com a E4-01 (upload do PDF) concluída.
+**Atualizado em:** 12/11/2026, com a E4-02 (nota do perfil) concluída.
 **Fonte:** plano do piloto "Funil de Candidaturas — Skills e piloto da página" (doc no claude.ai) e [`ANALISE_PROJETO.md`](ANALISE_PROJETO.md).
 
 A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 (ficha do candidato)** está em andamento: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
@@ -13,7 +13,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
-| 4 — Perfil | **Em andamento** | E4-01 concluída (12/11/2026). Próxima: E4-02 (análise do perfil pela IA); E4-05 pode ser feita em paralelo |
+| 4 — Perfil | **Em andamento** | E4-01 e E4-02 concluídas (12/11/2026). Próxima: E4-03 (prints do perfil para os itens que o PDF não mostra); E4-05 pode ser feita em paralelo |
 | 5 a 8 — Vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -124,6 +124,15 @@ Testes no ambiente real: currículo de 329 KB pelo computador (2 páginas, pasta
 
 Limpeza pendente: apagar do Drive e da aba `Curriculos` (linha de 12/11 22:45:50) o PDF de teste de 4,8 MB.
 
+**E4-02 concluída (12/11/2026, versão @13).** `src/server/Analise.ts` (`analisarPerfil`, `ultimaAnalise`) e o card "Nota do perfil" na aba Perfil > Currículo:
+- Rubrica `li-profile` 1.0 (12 itens, 100 pontos), da skill do projeto LinkedIn (`memoria_claude/skills/li-profile/rubric.json`), traduzida sem mudar pontos nem critérios. Fica no código e o `setupAmbiente()` grava na aba `Rubricas` se a versão não estiver lá; a análise lê da aba e registra `li-profile@1.0` em `Analises`.
+- Texto do PDF extraído uma vez (achado A2): o Drive converte o PDF em Google Doc temporário (OCR se preciso), exporta como texto e o Doc é apagado; o `.txt` fica na pasta do usuário e o ID vai para `Curriculos.texto_drive_id` (coluna nova). Sem custo de IA.
+- A IA recebe o texto do perfil, a rubrica e os itens confirmados da ficha (sem os de tom), dentro de tags como dado. Destaques, banner, foto e atividade (30 pontos) saem "não avaliados" e a nota fica parcial, com o máximo possível. Resposta fora da rubrica (item faltando, nota fora do intervalo, motivo vazio) gera uma nova tentativa; se falhar de novo, erro, nunca nota inventada. Limite de 5 análises por usuário por dia.
+
+Teste real com o PDF do LinkedIn do Roberto: **46 de 100, parcial (até 76)**; US$ 0,0275 (7.737 tokens de entrada, 1.199 de saída); `.txt` gravado; motivos usaram a ficha (4.100 escolas, MTTR, rotatividade). Dois ajustes depois do teste: (1) a página mostrava "undefined" nos itens não avaliados porque o `google.script.run` descarta campos `null` do objeto devolvido; (2) o prompt passou a não apontar inconsistência de data entre cargos da mesma empresa (a IA tinha acusado a Quantum13, de analista em nov/2025 a coordenador em mar/2026).
+
+**E4-03, decidido em 12/11/2026: prints do perfil, com perguntas como alternativa.** Na mesma tela da nota, o candidato envia até 3 prints (topo do perfil com foto e banner, seção Destaques, aba Atividade); a IA avalia os 4 itens com a mesma rubrica e a nota deixa de ser parcial. Quem não quiser mandar print responde perguntas (item só declarado pode valer menos, por não ter como conferir). Os prints são apagados 30 dias após o envio por gatilho diário, ficando a nota e o motivo (achado A3, como o termo de aceite já promete).
+
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
 - O login parou de funcionar porque a aba `Usuarios` ficou vazia (o conteúdo foi apagado na planilha, não pelo app). `setupAmbiente()` recadastrou a conta dona. Para facilitar o próximo diagnóstico, o Log agora registra o motivo da recusa (`nao_encontrado` ou `inativo`); veja "Se alguém não recebe o código" no README.
@@ -137,8 +146,8 @@ Limpeza pendente: apagar do Drive e da aba `Curriculos` (linha de 12/11 22:45:50
 | Modelo de recomendações com ID e textos gerados (D3) | Antes da Etapa 6 |
 | ~~Upload de PDF de até 5 MB testado ponta a ponta, inclusive no celular (D6)~~ | Feito na E4-01 (12/11/2026): 4,8 MB pelo computador e PDF do LinkedIn pelo celular |
 | ~~Pastas por usuário no Drive, coluna `pasta_id` (A1)~~ | Feito na E4-01: pasta criada no primeiro upload, nome = `usuario_id` |
-| Extrair o texto do PDF uma vez e guardar (A2) | Na E4-02 (primeira leitura do PDF pela IA) |
-| Comprovação por imagem e limpeza dos prints após 30 dias (A3) | Na Etapa 4 |
+| ~~Extrair o texto do PDF uma vez e guardar (A2)~~ | Feito na E4-02: o Drive converte o PDF em Doc e exporta texto; `.txt` na pasta do usuário |
+| Comprovação por imagem e limpeza dos prints após 30 dias (A3) | Na E4-03 (prints do perfil) |
 | Levar a skill `li-candidatura` (E7-01) para antes da E5-03 (D7) | Ao planejar a Etapa 5 |
 
 ## Operacional
