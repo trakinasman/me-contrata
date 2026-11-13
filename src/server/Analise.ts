@@ -240,6 +240,8 @@ function systemAnalise_(rubrica: ItemAnalise[]): string {
     "Para os outros, avaliado = true e nota inteira de 0 até os pontos do item. Se o perfil não tem a seção, nota 0.",
     "Motivo: uma ou duas frases em português do Brasil, diretas, dizendo o que falta para a nota cheia",
     "(ou por que está cheia). Sem travessão. Cite o perfil quando ajudar.",
+    "Datas: o tempo mostrado ao lado da empresa soma todos os cargos nela (ex.: analista e depois coordenador).",
+    "Só aponte inconsistência de data quando o próprio perfil se contradiz sem explicação possível.",
   ].join("\n");
 }
 
