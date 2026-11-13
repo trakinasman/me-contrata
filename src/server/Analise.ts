@@ -88,7 +88,13 @@ function analisarPerfil(token: string): ResultadoAnalise {
   }
   if (!itens) throw new Error("A análise não veio no formato esperado. Tente de novo em alguns minutos.");
 
-  const res = gravarAnalise_(s.usuario_id, cv.id, itens.map((i) => (i.nota === null ? i : { ...i, origem: "pdf" })));
+  // Itens completados por print ou resposta (E4-03) continuam valendo: o PDF não mostra esses itens.
+  const anterior = ultimaAnaliseDe_(s.usuario_id);
+  const completados = new Map((anterior ? anterior.resultado.itens : [])
+    .filter((i) => i.origem === "print" || i.origem === "resposta")
+    .map((i) => [i.item, i]));
+  const res = gravarAnalise_(s.usuario_id, cv.id,
+    itens.map((i) => completados.get(i.item) ?? (i.nota === null ? i : { ...i, origem: "pdf" })));
   registrarLog_(s.usuario_id, "perfil_analisado", `total ${res.total}${res.parcial ? ` (parcial, até ${res.maximo})` : ""}`);
   return res;
 }
