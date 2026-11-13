@@ -142,7 +142,7 @@
           </div>
           <form id="form-prints" class="card stack" novalidate hidden>
             <h2>Completar a nota</h2>
-            <p class="muted small">O PDF não mostra destaques, banner, foto e atividade (30 pontos). Mande prints da tela do seu perfil, ou responda as perguntas. Os prints são apagados 30 dias depois do envio; a nota fica.</p>
+            <p class="muted small">O PDF do LinkedIn não mostra destaques, banner, foto, atividade e recomendações (38 pontos), nem os endossos das competências. Mande prints da tela do seu perfil, ou responda as perguntas. Pode mandar só alguns. Os prints são apagados 30 dias depois do envio; a nota fica.</p>
             <div>
               <label for="print-topo">Print do topo do perfil (foto e banner)</label>
               <input type="file" id="print-topo" accept="image/*">
@@ -154,6 +154,14 @@
             <div>
               <label for="print-atividade">Print da aba Atividade (posts e comentários)</label>
               <input type="file" id="print-atividade" accept="image/*">
+            </div>
+            <div>
+              <label for="print-recomendacoes">Print da seção Recomendações, aba Recebidas (abra o "ver mais" de cada uma)</label>
+              <input type="file" id="print-recomendacoes" accept="image/*">
+            </div>
+            <div>
+              <label for="print-competencias">Print da seção Competências, com os endossos</label>
+              <input type="file" id="print-competencias" accept="image/*">
             </div>
             <p class="small muted">Sem print? Responda. Item só declarado vale no máximo 70% dos pontos.</p>
             <div id="perguntas-prints" class="stack"></div>
@@ -307,7 +315,8 @@
       { item: "photo", texto: "Sua foto é dos últimos 2 anos, com o rosto ocupando boa parte e os olhos visíveis?" },
       { item: "banner", texto: "Seu banner tem uma frase de posicionamento e um jeito de falar com você (não é o fundo padrão)?" },
       { item: "featured", texto: "Sua seção Destaques tem 3 itens atuais: um post, uma prova do seu trabalho e um contato?" },
-      { item: "activity", texto: "Você postou ou comentou no LinkedIn nos últimos 7 dias?" }
+      { item: "activity", texto: "Você postou ou comentou no LinkedIn nos últimos 7 dias?" },
+      { item: "recommendations", texto: "Você tem pelo menos 3 recomendações dos últimos 2 anos, cada uma citando um resultado do seu trabalho?" }
     ];
     el("perguntas-prints").replaceChildren.apply(el("perguntas-prints"), PERGUNTAS_PRINT.map(function (p) {
       return h("div", {},
@@ -347,7 +356,7 @@
       ev.preventDefault();
       var form = ev.target;
       el("erro-prints").textContent = "";
-      var arquivos = ["topo", "destaques", "atividade"].map(function (t) { return { tipo: t, arq: el("print-" + t).files[0] }; })
+      var arquivos = ["topo", "destaques", "atividade", "recomendacoes", "competencias"].map(function (t) { return { tipo: t, arq: el("print-" + t).files[0] }; })
         .filter(function (x) { return x.arq; });
       var respostas = {};
       PERGUNTAS_PRINT.forEach(function (p) { var v = el("resp-" + p.item).value; if (v) respostas[p.item] = v; });

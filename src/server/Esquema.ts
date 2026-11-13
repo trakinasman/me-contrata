@@ -43,7 +43,7 @@ const LISTAS: Record<string, string[]> = {
   modalidade: ["remoto", "hibrido", "presencial"],
   secao_ficha: ["quem_sou", "como_soo", "personalidade", "palavras_usa", "palavras_evita", "posicoes", "fora_dos_limites", "provas"],
   status_lista: ["a_revisar", "aprovada"],
-  tipo_print: ["topo", "destaques", "atividade"],
+  tipo_print: ["topo", "destaques", "atividade", "recomendacoes", "competencias"],
   uf: ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"],
 };
 

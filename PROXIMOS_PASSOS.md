@@ -13,7 +13,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
-| 4 — Perfil | **Em andamento** | E4-01 e E4-02 concluídas (12/11/2026). E4-03 publicada na versão @14 (13/11/2026), falta o teste real com prints. Próximas: E4-04 (reescritas); E4-05 pode ser feita em paralelo |
+| 4 — Perfil | **Em andamento** | E4-01, E4-02 e E4-03 concluídas (E4-03 testada no ambiente real em 13/11/2026: nota de 46 parcial para 70). Próximas: E4-04 (reescritas); E4-05 pode ser feita em paralelo |
 | 5 a 8 — Vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -143,7 +143,11 @@ Como chegou ao GitHub: a versão @14 foi feita e publicada por uma sessão em ou
 
 Ajuste depois da @14: uma nova análise do PDF mantém os itens completados por print ou resposta. Antes eles voltavam a "não avaliado" (no teste simulado, a nota caía de 38 para 24). Testes com Apps Script simulado: 19 casos (recusas sem gastar IA, print + resposta, item não visível caindo na resposta, isolamento entre usuários, o ajuste e a limpeza de 30 dias).
 
-Falta: publicar o ajuste (`npm run deploy`), testar com prints reais (computador e celular) e apagar o projeto Apps Script antigo `1FSBG-ld6…`. O `.clasp.json` deste computador apontava para ele: os `npm run push` daqui não chegavam ao app publicado.
+Ajuste publicado na versão @15 (13/11/2026). O `.clasp.json` deste computador apontava para o projeto antigo `1FSBG-ld6…` (os `npm run push` daqui não chegavam ao app publicado); agora aponta para o real. Falta apagar o projeto antigo em script.google.com.
+
+**Teste real (13/11/2026):** o Roberto mandou os 3 prints pela página. Nota de 46 (parcial, até 76) para **70 de 100**, completa: atividade 10/10, banner 6/6, foto 5/6, Destaques 3/8 (só um item). Prints na pasta dele e em `Comprovacoes`, `nota_completada` no Log, US$ 0,0087 na chamada. Falta o teste pelo celular.
+
+**Recomendações e endossos (13/11/2026):** o PDF exportado do LinkedIn não traz a seção Recomendações (conferido no texto extraído do PDF do Roberto, que tem 3 recomendações de 05/11/2026), e a IA dava 0 de 8 dizendo que o perfil não tinha nenhuma. Também não traz os endossos, e a IA tirava pontos de Competências por isso. Correção: `recommendations` entrou nos itens que o PDF não mostra (sai "não avaliado"); o prompt manda avaliar a escolha das competências sem tirar pontos por endosso invisível; "Completar a nota" ganhou os prints de Recomendações e de Competências (com endossos) e a pergunta de recomendações. Os itens não visíveis no PDF somam agora 38 pontos. Testes com Apps Script simulado: 30 casos. Depois de publicar, rodar `setupAmbiente()`: a validação da coluna `tipo` de `Comprovacoes` precisa aceitar os dois tipos novos.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
