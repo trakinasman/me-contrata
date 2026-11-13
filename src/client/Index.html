@@ -292,6 +292,15 @@
     function desenharAnalise(a) {
       el("form-prints").hidden = !a;
       if (!a) { el("resultado-analise").replaceChildren(h("p", { class: "muted small" }, "Nenhuma análise ainda.")); return; }
+      // Item já avaliado por print não aceita resposta: o servidor também ignora.
+      PERGUNTAS_PRINT.forEach(function (p) {
+        var it = a.itens.filter(function (i) { return i.item === p.item; })[0];
+        var porPrint = !!(it && it.origem === "print");
+        var sel = el("resp-" + p.item);
+        if (porPrint) sel.value = "";
+        sel.disabled = porPrint;
+        el("aviso-resp-" + p.item).textContent = porPrint ? "Já avaliado pelo print. Para mudar, mande um print novo." : "";
+      });
       var quando = new Date(a.criadoEm);
       var resumo = a.parcial
         ? "Nota parcial: " + a.total + " de 100. Os itens não avaliados podem levar a até " + a.maximo + "."
@@ -325,7 +334,8 @@
           h("option", { value: "" }, "Não vou responder"),
           h("option", { value: "sim" }, "Sim"),
           h("option", { value: "em_parte" }, "Em parte"),
-          h("option", { value: "nao" }, "Não")));
+          h("option", { value: "nao" }, "Não")),
+        h("p", { class: "small muted", id: "aviso-resp-" + p.item }));
     }));
 
     // Reduz o print a no máximo 1600 px no lado maior e envia como JPEG (fica leve, inclusive no celular).

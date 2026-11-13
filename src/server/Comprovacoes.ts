@@ -72,9 +72,11 @@ function completarNotaPerfil(token: string, dados: { prints?: unknown; respostas
     for (const it of avaliados) novos.set(it.item, it);
   }
 
-  // 2. Respostas, para o que o print não cobriu (ou não mostrou).
+  // 2. Respostas, para o que o print não cobriu (ou não mostrou). Resposta declarada nunca
+  // substitui item já avaliado por print em envio anterior: o print é prova, a resposta não.
+  const jaPorPrint = new Set(base.resultado.itens.filter((i) => i.origem === "print").map((i) => i.item));
   for (const [item, resp] of Object.entries(respostas)) {
-    if (novos.has(item)) continue;
+    if (novos.has(item) || jaPorPrint.has(item)) continue;
     const ref = porItem.get(item)!;
     const nota = Math.round(ref.pontos * COMPROVACAO.PESO_RESPOSTA[resp]);
     const motivo = resp === "nao"
@@ -83,7 +85,7 @@ function completarNotaPerfil(token: string, dados: { prints?: unknown; respostas
     novos.set(item, { ...ref, nota, motivo, origem: "resposta" });
   }
 
-  // 3. Junta com a última análise: os itens do PDF ficam; os novos substituem os 4 itens.
+  // 3. Junta com a última análise: os itens do PDF ficam; os novos substituem os que foram avaliados agora.
   const itens = base.resultado.itens.map((i) => novos.get(i.item) ?? i);
   const res = gravarAnalise_(s.usuario_id, base.curriculoId, itens);
   if (prints.length) guardarPrints_(s.usuario_id, res.id, prints);
