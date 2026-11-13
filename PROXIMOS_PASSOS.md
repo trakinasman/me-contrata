@@ -159,6 +159,14 @@ Ajuste publicado na versão @15 (13/11/2026). O `.clasp.json` deste computador a
 - Tom da ficha (Como escrevo, Palavras que uso e evito): abrir com número ou cena, frases de tamanho variado, mérito dividido com o time, fecho curto. Sem travessão, sem aspas curvas.
 - O `humanize.py`/`detect.py` da skill `li-human` mede pronomes e contrações só em inglês: a nota de "voz" não vale para português. A E4-05 (`humanizarPT`) precisa de pronomes e léxico em português.
 
+**E4-04 implementada (13/11/2026).** `src/server/Reescritas.ts` (`gerarReescritas`, `ultimasReescritas`) e o card "Reescritas do perfil" na aba Perfil > Currículo:
+- Gera título, Sobre e descrição do cargo atual a partir do texto do PDF (referência do que existe), da última nota (o motivo de cada item) e da ficha.
+- Ficha separada em fatos (só itens confirmados de Quem sou, Provas, Personalidade e Minhas posições), tom (Como escrevo, Palavras que uso e evito) e proibidos (status proibido e Fora dos limites). Itens a confirmar e vazios ficam de fora. Os proibidos têm limite próprio e nunca são cortados para caber fatos.
+- O prompt segue os aprendizados acima: fatos só da ficha, nada de detalhe plausível inventado, [CONFIRMAR: o que falta] no lugar, sem sinal de busca de emprego, limites e estrutura de cada texto, tom do candidato. A IA devolve também até 6 pontos para conferir antes de publicar.
+- O servidor limpa travessão, aspas curvas, reticências de um caractere e caracteres invisíveis, mantendo as quebras de linha do Sobre, e confere os limites (título 220, Sobre 1.400, cargo 1.200). Fora do limite gera nova tentativa; se falhar de novo, erro. É o começo da E4-05, sem o léxico.
+- Cada geração grava uma versão nova de cada texto na aba `Textos` (`linkedin_titulo`, `linkedin_sobre`, `linkedin_cargo_atual`, sem vaga). Limite de 5 por dia. A página mostra os textos com os [CONFIRMAR] destacados, a contagem de caracteres e um botão Copiar.
+- Testes com Apps Script simulado: 24 casos (o que entra em cada bloco do prompt, isolamento, limpeza, limites com nova tentativa, versões, proibidos na ficha cheia, limite diário). Falta: publicar, gerar com o perfil real do Roberto e comparar com o gabarito escrito à mão.
+
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
 - O login parou de funcionar porque a aba `Usuarios` ficou vazia (o conteúdo foi apagado na planilha, não pelo app). `setupAmbiente()` recadastrou a conta dona. Para facilitar o próximo diagnóstico, o Log agora registra o motivo da recusa (`nao_encontrado` ou `inativo`); veja "Se alguém não recebe o código" no README.
