@@ -14,8 +14,13 @@
  *
  * Formato do corpo (JSON):
  *   { ts: segundos desde 1970, nonce: 32 a 64 hex, dados: "<JSON em texto>", assinatura: hex }
- * dados = { acao: "vagas", usuario_id, vagas: [{ fonte, fonte_id, empresa, titulo, link,
- *           local, modalidade, publicada_em, nota, motivos: [texto] }] }
+ * Ações (campo `acao` de dados):
+ * - "preferencias" (E3-02): devolve as preferências de cada usuário ativo que aceitou
+ *   o termo e tem linha em Preferencias. Só usuario_id e preferências; nunca e-mail ou nome.
+ *   dados = { acao: "preferencias" }
+ * - "vagas" (E3-01): grava as vagas de um usuário.
+ *   dados = { acao: "vagas", usuario_id, vagas: [{ fonte, fonte_id, empresa, titulo, link,
+ *             local, modalidade, publicada_em, nota, motivos: [texto] }] }
  */
 
 const AGENTE = {
@@ -24,7 +29,23 @@ const AGENTE = {
   MAX_ENVIOS_HORA: 60,
   JANELA_TS_S: 300,
   NONCE_TTL_S: 600,
+  // Preferências: limites de cada lista e nota mínima quando a célula está vazia.
+  PREF_MAX_ITENS: 50,
+  PREF_MAX_TEXTO: 80,
+  NOTA_MINIMA_PADRAO: 50,
 } as const;
+
+interface PreferenciasAgente {
+  usuario_id: string;
+  titulos: string[];
+  modalidades: string[];
+  ufs: string[];
+  cidades: string[];
+  aceita_pj: boolean;
+  idiomas: string[];
+  termos_excluir: string[];
+  nota_minima: number;
+}
 
 const MODALIDADE_AGENTE: Record<string, string> = {
   remote: "remoto", remoto: "remoto",
@@ -62,6 +83,7 @@ function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.Tex
     let dados: { acao?: unknown; usuario_id?: unknown; vagas?: unknown };
     try { dados = JSON.parse(String(env.dados)); } catch (_) { return recusarAgente_("invalido", "dados_json"); }
 
+    if (dados.acao === "preferencias") return respostaAgente_(preferenciasParaAgente_());
     if (dados.acao !== "vagas") return recusarAgente_("invalido", "acao");
     return respostaAgente_(receberVagas_(dados.usuario_id, dados.vagas));
   } catch (err) {
@@ -171,6 +193,8 @@ function receberVagas_(usuarioId: unknown, vagas: unknown): { ok: boolean; erro?
   if (!/^[0-9a-f-]{36}$/i.test(uid)) { registrarLog_("", "agente_recusado", "usuario_id"); return { ok: false, erro: "invalido" }; }
   const u = buscarUsuarioPorId_(uid);
   if (!u || !u.ativo) { registrarLog_("", "agente_recusado", "usuario_inativo"); return { ok: false, erro: "invalido" }; }
+  // Sem o termo aceito, nada do candidato é gravado (LGPD).
+  if (u.termo_versao !== TERMO_VERSAO) { registrarLog_(uid, "agente_recusado", "termo_pendente"); return { ok: false, erro: "invalido" }; }
   if (!Array.isArray(vagas) || vagas.length > AGENTE.MAX_VAGAS) { registrarLog_(uid, "agente_recusado", "lista_vagas"); return { ok: false, erro: "invalido" }; }
 
   const validas = new Map<string, VagaRecebida>();
@@ -234,4 +258,66 @@ function receberVagas_(usuarioId: unknown, vagas: unknown): { ok: boolean; erro?
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Preferências de cada usuário ativo que aceitou o termo, para o agente rodar uma vez
+ * por usuário (E3-02). Usuário sem linha em Preferencias fica de fora (só é contado).
+ * Se houver mais de uma linha do mesmo usuário, vale a primeira.
+ */
+function preferenciasParaAgente_(): { ok: boolean; usuarios: PreferenciasAgente[]; sem_preferencias: number } {
+  const ativos = new Set<string>();
+  // buscarUsuario_ percorre a aba toda (e completa linhas cadastradas à mão); o filtro só coleta.
+  buscarUsuario_((u) => {
+    if (u.ativo && u.termo_versao === TERMO_VERSAO) ativos.add(u.usuario_id);
+    return false;
+  });
+
+  const { cab, linhas } = lerAba_("Preferencias");
+  const c = (nome: string) => coluna_(cab, nome);
+  const usuarios: PreferenciasAgente[] = [];
+  const vistos = new Set<string>();
+  for (const l of linhas) {
+    const uid = String(l[c("usuario_id")]).trim();
+    if (!ativos.has(uid) || vistos.has(uid)) continue;
+    vistos.add(uid);
+    const nota = String(l[c("nota_minima")]).trim();
+    usuarios.push({
+      usuario_id: uid,
+      titulos: listaPreferencia_(l[c("titulos")]),
+      modalidades: listaPreferencia_(l[c("modalidades")], LISTAS.modalidade),
+      ufs: listaPreferencia_(l[c("ufs")], LISTAS.uf),
+      cidades: listaPreferencia_(l[c("cidades")]),
+      aceita_pj: verdadeiro_(l[c("aceita_pj")]),
+      idiomas: listaPreferencia_(l[c("idiomas")]),
+      termos_excluir: listaPreferencia_(l[c("termos_excluir")]),
+      nota_minima: nota && Number.isFinite(Number(nota))
+        ? Math.max(0, Math.min(100, Math.round(Number(nota))))
+        : AGENTE.NOTA_MINIMA_PADRAO,
+    });
+  }
+  const sem = ativos.size - usuarios.length;
+  registrarLog_("", "agente_preferencias", `${usuarios.length} usuarios, ${sem} sem preferencias`);
+  return { ok: true, usuarios, sem_preferencias: sem };
+}
+
+/**
+ * Célula com valores separados por vírgula, ponto e vírgula ou quebra de linha -> lista
+ * limpa, sem repetidos e com limite de itens. Com `permitidos`, só entram os valores da
+ * lista (comparação sem diferença de maiúsculas), na grafia da lista.
+ */
+function listaPreferencia_(v: unknown, permitidos?: string[]): string[] {
+  const saida: string[] = [];
+  for (const parte of String(v ?? "").split(/[,;\n]/)) {
+    let t = textoAgente_(parte, AGENTE.PREF_MAX_TEXTO);
+    if (!t) continue;
+    if (permitidos) {
+      const achado = permitidos.find((p) => p.toLowerCase() === t.toLowerCase());
+      if (!achado) continue;
+      t = achado;
+    }
+    if (!saida.some((s) => s.toLowerCase() === t.toLowerCase())) saida.push(t);
+    if (saida.length >= AGENTE.PREF_MAX_ITENS) break;
+  }
+  return saida;
 }
