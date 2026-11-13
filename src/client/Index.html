@@ -271,8 +271,8 @@
         h("p", {}, h("b", {}, resumo)),
         h("p", { class: "small muted" }, "Análise de " + (isNaN(quando) ? a.criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))),
         h("div", { class: "stack" }, a.itens.map(function (i) {
-          var nota = i.nota === null ? "não avaliado" : i.nota + " / " + i.pontos;
-          var classe = i.nota === null ? "" : i.nota >= i.pontos * 0.8 ? "ok" : i.nota >= i.pontos * 0.4 ? "warn" : "bad";
+          var nota = i.nota == null ? "não avaliado" : i.nota + " / " + i.pontos;
+          var classe = i.nota == null ? "" : i.nota >= i.pontos * 0.8 ? "ok" : i.nota >= i.pontos * 0.4 ? "warn" : "bad";
           return h("div", { class: "item-ficha" },
             h("div", { class: "row entre" }, h("b", {}, i.nome), h("span", { class: "chip " + classe }, nota)),
             h("div", { class: "small" }, i.motivo));
