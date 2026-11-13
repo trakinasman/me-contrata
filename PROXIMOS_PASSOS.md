@@ -1,6 +1,6 @@
 # Próximos passos
 
-**Atualizado em:** 12/11/2026, com a E3-02 concluída e testada no ambiente real.
+**Atualizado em:** 12/11/2026, com a E3-03 concluída e testada no ambiente real.
 **Fonte:** plano do piloto "Funil de Candidaturas — Skills e piloto da página" (doc no claude.ai) e [`ANALISE_PROJETO.md`](ANALISE_PROJETO.md).
 
 A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 (ficha do candidato)** está em andamento: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
@@ -12,7 +12,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 0 — Preparação | Parcial | P0-02 (projeto, planilha, pasta) e P0-03 (chave da API) feitos. Falta confirmar o teto de gasto mensal no Console da Anthropic. P0-01 (scripts `build_cv_*.js`) e P0-04 (revisar `voice.md`) ficam fora deste repositório |
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
-| 3 — Agente gravando na planilha | **Em andamento** | D2 decidido (catálogo + estado por candidato). E3-01 e E3-02 concluídas e testadas no ambiente real (12/11/2026). Próxima: E3-03 |
+| 3 — Agente gravando na planilha | **Em andamento** | D2 decidido (catálogo + estado por candidato). E3-01, E3-02 e E3-03 concluídas e testadas no ambiente real (12/11/2026). Próxima: E3-04 |
 | 4 a 8 — Perfil, vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -36,7 +36,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | E3-01 | `buscar_vagas.py` envia as vagas para um `doPost` do web app, com segredo compartilhado | Vagas chegam à aba Vagas; chamada sem o segredo é recusada |
 | E3-02 | O agente lê a configuração de cada usuário da aba Preferencias | Uma execução por usuário ativo; `config.json` fica só com as listas gerais |
 | E3-03 | Mapear UF e modalidade para o filtro de cada fonte | Teste com SC, RS e remoto devolve vagas em todas as fontes |
-| E3-04 | Listas de nível, área e exclusão por usuário, geradas pela IA e revisadas | O Roberto mantém as listas atuais; um 2º usuário recebe listas próprias |
+| E3-04 | Listas de nível, área e exclusão por usuário, geradas pela IA e revisadas. Inclui as empresas-alvo (decidido em 12/11/2026) | O Roberto mantém as listas atuais; um 2º usuário recebe listas próprias |
 | E3-05 | Deduplicar por fonte+id e por título+empresa; vaga descartada nunca é recriada | Rodar duas vezes seguidas não duplica nada |
 
 **D2 decidido (11/11/2026): catálogo + estado por candidato.** A aba `Vagas` é o catálogo, uma linha por anúncio, com `vaga_id = "<fonte>:<id na fonte>"` (ex.: `gupy:12781855`) e sem `usuario_id`. Nota, motivos e descarte de cada candidato ficam em `VagasCandidato` (`usuario_id + vaga_id`). A página nunca lista o catálogo inteiro, só as vagas com linha do candidato. Na exclusão de dados (LGPD) saem as linhas de `VagasCandidato`; o catálogo é anúncio público e fica.
@@ -71,6 +71,16 @@ No agente (`C:\Github\linkedin\agente_vagas\`, fora do Git): coleta uma vez; not
 Testes: com as preferências equivalentes às antigas, 216 combinações de vaga deram a mesma nota da versão anterior (só o texto dos motivos mudou: "cidade preferida" / "fora das cidades preferidas"). Execução real: 3.172 vagas analisadas, preferências de 1 usuário (o de teste, sem preferências, ficou de fora), 69 selecionadas para o Roberto, 17 novas e 52 já existentes. Das 17, 12 já tinham sido coletadas antes e só agora passaram da nota porque o Roberto marcou inglês (Radix, CARV Group, Atlas Governance).
 
 Preferências do Roberto preenchidas na planilha: remoto, híbrido e presencial; SC; 7 cidades da Grande Florianópolis; aceita PJ; inglês; nota mínima 50.
+
+**E3-03 concluída (12/11/2026), só no agente (sem mudança no servidor):** a coleta deixou de ter SC fixo. As preferências são lidas antes da coleta, e a união das UFs de todos os usuários (mais o remoto, se alguém aceitar) define as buscas: Gupy `state=<estado>`, InfoJobs `empregos-em-<estado>.aspx`, Catho `/vagas/<termo>/<uf>/` (a UF da vaga vem da busca, porque o card da Catho não traz). Sólides, InHire, Michael Page e empresas-alvo não têm filtro de local: trazem o Brasil todo e a nota filtra. Saiu `buscas` do `config.json`; `termos_sc` virou `termos_uf`. Cada vaga ganha a UF (sigla ou nome do estado), e a coluna `local` das vagas novas chega como "Cidade/UF".
+
+Nota: presencial ou híbrida em estado fora das preferências perde `penalidade_fora_do_estado` (60, antes 35); quem tem UFs e nenhuma cidade ganha +15 nas vagas do seu estado. Para o Roberto (só SC) só muda a vaga presencial/híbrida em outro estado; remoto, Grande Florianópolis, resto de SC e UF desconhecida ficam iguais.
+
+Testes: coleta reduzida com SC, RS e remoto devolveu vagas em todas as fontes (Gupy 40/36/35, InfoJobs 81/103/108, Catho 56/59/42, Sólides 13/11/22, InHire 91/35/266, empresas-alvo 3/21/3; Michael Page sem filtro de local e hoje quase só com vagas em SP). Dois bugs achados e corrigidos no teste: variável `slug` escondendo a função no InfoJobs remoto; local "Santa Catarina" da Michael Page não virava UF. Execução real: 3.171 vagas, 62 selecionadas para o Roberto (eram 69), nenhuma nova; as 7 que saíram são presenciais/híbridas em outros estados.
+
+Pendência: vaga que já foi enviada e depois cai abaixo da nota continua em `VagasCandidato` (o `doPost` só cria, nunca atualiza). Decidir na E3-05 se a nota é atualizada ou a vaga é marcada.
+
+**Empresas-alvo entram na E3-04 (decidido em 12/11/2026).** Hoje `empresas_alvo_gupy` (páginas de carreira lidas inteiras) e `grupos_empresas` (EACE, SEDUC, FUST: +15 pontos e nota mínima 30) estão no `config.json` e valem para todos, mas são do Roberto. Na E3-04 passam a ser por usuário: a coleta lê as páginas de carreira de todas as empresas-alvo de todos os usuários (uma vez, como as UFs), e o bônus e a nota mínima menor valem só para quem marcou a empresa. As listas atuais vão para a conta do Roberto, sem mudar o resultado dele.
 
 Observado: 4 vagas presenciais fora de SC (São Paulo, Belo Horizonte, Brasília) entraram com nota exatamente 50, como já acontecia antes. A E3-03 (UF por vaga) deve resolver; até lá, subir a `nota_minima` para 55 corta esses casos.
 
