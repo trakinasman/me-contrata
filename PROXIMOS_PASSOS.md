@@ -1,6 +1,6 @@
 # Próximos passos
 
-**Atualizado em:** 12/11/2026, com a E3-04 concluída e testada no ambiente real.
+**Atualizado em:** 12/11/2026, com a Etapa 3 (E3-01 a E3-05) concluída.
 **Fonte:** plano do piloto "Funil de Candidaturas — Skills e piloto da página" (doc no claude.ai) e [`ANALISE_PROJETO.md`](ANALISE_PROJETO.md).
 
 A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 (ficha do candidato)** está em andamento: ela traz as primeiras funções com dados de verdade, que permitem o teste de isolamento com dois usuários. Só depois desse teste o web app pode ser aberto para outras pessoas.
@@ -12,7 +12,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 0 — Preparação | Parcial | P0-02 (projeto, planilha, pasta) e P0-03 (chave da API) feitos. Falta confirmar o teto de gasto mensal no Console da Anthropic. P0-01 (scripts `build_cv_*.js`) e P0-04 (revisar `voice.md`) ficam fora deste repositório |
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
-| 3 — Agente gravando na planilha | **Em andamento** | D2 decidido (catálogo + estado por candidato). E3-01 a E3-04 concluídas e testadas no ambiente real (12/11/2026). Próxima: E3-05 |
+| 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
 | 4 a 8 — Perfil, vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -96,7 +96,19 @@ Migração: as listas do Roberto saíram do `config.json` para a `ListasBusca` c
 
 Teste com 2º usuário (conta de teste, perfil fictício de coordenação de marketing em Porto Alegre, `origem = teste_ficticio` na ficha): a IA gerou as listas (US$ 0,0096; 1.531 tokens de entrada e 658 de saída). Na revisão saíram `pleno` e `senior` de `excluir` e `digital` foi de `area` para `area_fraca`; o prompt foi ajustado para esses casos. Execução real: 4.115 vagas analisadas (RS, SC e remoto, 12 termos extras); Roberto com 54 vagas (eram 62: o inglês saiu das preferências dele porque a ficha diz que é limitado, e vagas que exigem inglês fluente voltaram a perder 30); conta de teste com 89 vagas, as ~19 melhores exatamente do perfil (e-commerce, marketing, growth, mídia paga em Porto Alegre e remoto). As outras ~70 eram de vendas com nota 50, por `comercial`/`vendas` em `area_fraca`: removidos da conta de teste, e o prompt agora só aceita em `area_fraca` áreas que o candidato aceitaria.
 
-Para a E3-05 ou depois: "nível + área genérica + local bom" soma exatamente 50, a nota mínima padrão, e passa (acontece também com o Roberto). Avaliar nota mínima padrão 55. As 89 vagas da conta de teste ficam em `VagasCandidato` (o `doPost` não apaga).
+Para a E3-05 ou depois: "nível + área genérica + local bom" soma exatamente 50, a nota mínima padrão, e passa (acontece também com o Roberto). Resolvido na E3-05 (nota mínima 55). As 89 vagas da conta de teste ficam em `VagasCandidato` (o `doPost` não apaga).
+
+**E3-05 concluída (12/11/2026).** Servidor (versão @10):
+- fonte+id e "descartada nunca é recriada" já vinham da E3-01 (`vaga_id = fonte:id`; vaga que o candidato já tem nunca é recriada).
+- Título+empresa: se o candidato já tem uma vaga com o mesmo título e a mesma empresa (sem acento, maiúscula, pontuação e espaços), o anúncio de outro portal entra só no catálogo, sem nova linha em `VagasCandidato` (conta como `duplicadas`). Vale também dentro do mesmo envio. Empresa vazia ou confidencial não gera chave. Limitação: nome de empresa diferente entre portais ("RHESERVA" e "RHESERVA CONSULTORIA") não junta.
+- Vaga que o candidato já tem, não descartada: nota, motivos e `selecionada_em` (coluna nova) atualizados a cada envio. Vaga que deixa de vir (nota caiu ou anúncio fechou) fica com o `selecionada_em` antigo, sem ser apagada: decidido em 12/11/2026 que a página mostra como vigente só o que foi selecionado recentemente (definir a janela na Etapa 5).
+- Nota mínima padrão 55 (decidido em 12/11/2026); a do Roberto também foi para 55.
+
+Agente: o resumo do envio mostra as atualizadas e as repetidas de outro portal.
+
+Teste real: com a mesma busca da execução das 19:38, os dois usuários tiveram `candidato +0` (Roberto 40 vagas, todas com nota atualizada; conta de teste 24). A queda (54 → 40 e 89 → 24) vem da nota mínima 55 e da retirada de `comercial`/`vendas` da conta de teste. Uma segunda execução seguida foi interrompida pelo Claude Code por falta de memória, antes de enviar. A dedup por título+empresa ainda não teve caso real (nenhuma vaga nova nessa execução): conferir no `Log` (`duplicadas`) quando aparecer uma vaga nova publicada em dois portais.
+
+As linhas antigas de `VagasCandidato` (antes da E3-05) estão com `selecionada_em` vazio até o agente selecioná-las de novo.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
