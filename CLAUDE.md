@@ -11,6 +11,7 @@ Assistente web para candidatos a vagas: ficha do candidato, nota do perfil, adap
 ## Comandos
 - `npm run build`: limpa e gera `dist/`
 - `npm run typecheck`: checa tipos sem gerar arquivos
+- `npm test`: build + testes em `tests/` (Apps Script simulado no Node, sem rede). Rodar antes de `push`/`deploy`; cada entrega nova ganha um `tests/<parte>.test.js`
 - `npm run push`: build + `clasp push`
 - `npm run deploy`: push + nova versão na implantação publicada (a URL `/exec` não muda)
 - `npm run deploy:nova`: push + implantação nova, com URL nova (só para um ambiente novo; depois troque o ID no script `deploy`)
