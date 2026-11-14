@@ -13,7 +13,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
-| 4 — Perfil | **Em andamento** | E4-01 a E4-04 concluídas e testadas no ambiente real (nota do Roberto: 46 parcial para 76, completa). **E4-05 (humanizarPT) implementada em 14/11/2026, falta publicar.** Próxima: E4-06 (histórico da nota) |
+| 4 — Perfil | **Em andamento** | E4-01 a E4-04 concluídas e testadas no ambiente real (nota do Roberto: 46 parcial para 76, completa). E4-05 (humanizarPT) publicada na versão @20 (14/11/2026). **E4-06 (histórico da nota) implementada, falta publicar.** Depois: Etapa 5 |
 | 5 a 8 — Vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -182,6 +182,13 @@ Ajuste publicado na versão @15 (13/11/2026). O `.clasp.json` deste computador a
 - Diferenças da ferramenta original: em português o vocabulário é só apontado, não trocado (verbo e adjetivo flexionam); a voz conta pronomes de 1ª e 2ª pessoa, "a gente", pretérito em -ei e verbo no presente em primeira pessoa no começo da frase ("Lidero", "Audito"), porque o português omite o sujeito; fronteira de palavra que entende acento (o `\b` do JavaScript não vê "é" nem "ê" como letra, e "você" ou "não é só X, é Y" nunca casariam).
 - Calibração com textos desta conversa: ROI escrito à mão 77 (passa); ROI de outra ferramenta, com travessões e aspas curvas, 41 (parece IA); texto clichê 35 (parece IA); Sobre da E4-04 versão 2, 65 (revisar: tópicos de tamanho parecido).
 - Na página, cada reescrita mostra "Naturalidade N · veredito", os pontos para revisar e, recolhido, como a nota é calculada.
+- Publicada na versão @20 (14/11/2026), com os testes no repositório (97 casos).
+
+**E4-06 implementada (14/11/2026).** `src/server/Historico.ts` (`historicoNotas`) e o card "Histórico da nota" na aba Perfil > Currículo, entre "Completar a nota" e as reescritas:
+- Lê as linhas do candidato em `Analises` (cada análise do PDF e cada nota completada por print ou resposta já gravava uma linha nova); sem coluna nova.
+- Para cada entrada: data, nota (e o máximo, se parcial), diferença para a anterior e o que mudou item a item, com a origem da nota nova (PDF, print ou resposta). Item sem origem (análises antes da E4-03) conta como PDF. Mais recente primeiro, até 30 entradas.
+- A página recarrega o histórico sempre que a nota é desenhada (carga da aba, nova análise, nota completada).
+- Testes: `tests/historico.test.js` reproduz a sequência real do Roberto (46 parcial, 70, 70 com as respostas trocando os prints, 76) e confere diferença e mudanças em cada passo, isolamento e o limite de 30; 109 casos no total.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
