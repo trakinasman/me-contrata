@@ -58,6 +58,16 @@ module.exports = function () {
   r.ok(d.texto.startsWith("Gestão de equipes de suporte. Requisitos: ITIL/COBIT."), "JSON-LD: entidades nomeadas, decimais e hexadecimais decodificadas");
   r.ok(ctx.lerDescricaoDoAnuncio(A, "ld:3").texto.startsWith("Liderar o time de NOC"), "JSON-LD dentro de @graph");
 
+  // Sólides sem JSON-LD (caso real da Raro Labs em 14/11/2026): texto em pageProps.vacancy.
+  const solides = (vacancy) => `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { company: { description: "Sobre a empresa ".repeat(30) }, vacancy } } })}</script>`;
+  anuncio("so:8", url(8));
+  estado("usr-A", "so:8");
+  paginas[url(8)] = { html: solides({ description: `<p><strong>Responsabilidades:</strong></p><p>${LONGO}</p>`, benefits: [{ name: "Plano de saúde" }, { name: "Day off" }] }) };
+  d = ctx.lerDescricaoDoAnuncio(A, "so:8");
+  r.ok(d.texto.startsWith("Responsabilidades:\n\nLiderar o time") && d.texto.endsWith("Benefícios\n- Plano de saúde\n- Day off") && !d.texto.includes("Sobre a empresa"),
+    "Sólides sem JSON-LD: descrição da vaga e benefícios, sem a descrição da empresa");
+  r.ok(ctx.extrairDescricao_(solides({ description: `<p>${LONGO}</p>`, benefits: [] })).endsWith("processos de monitoração."), "Sólides sem benefícios: só a descrição");
+
   // Falhas: pedem para colar e não gravam nada.
   const linhas = abas.Descricoes.d.length;
   r.erro(() => ctx.lerDescricaoDoAnuncio(A, "catho:4"), /cole aqui/, "site que bloqueia (403): pede para colar");

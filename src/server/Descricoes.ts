@@ -2,8 +2,9 @@
  * Descrição da vaga (E5-02).
  *
  * - Lida da página do anúncio por UrlFetchApp. Onde está o texto, conferido em 14/11/2026:
- *   Gupy guarda a vaga nos dados da página (__NEXT_DATA__: description, responsibilities,
- *   prerequisites, relevantExperiences); Sólides e InfoJobs usam o formato padrão de vaga
+ *   Gupy guarda a vaga nos dados da página (__NEXT_DATA__: job.description, responsibilities,
+ *   prerequisites, relevantExperiences); Sólides também (__NEXT_DATA__: vacancy.description e
+ *   benefits), e só algumas páginas dela têm o JSON-LD; InfoJobs usa o formato padrão de vaga
  *   (JSON-LD JobPosting). InHire monta a página no navegador e a Catho recusa robôs (403):
  *   nesses casos o candidato cola o texto.
  * - Aba Descricoes. A descrição lida do anúncio é pública, como o catálogo de vagas: uma linha
@@ -155,7 +156,19 @@ function extrairDescricao_(html: string): string {
   const next = html.match(/<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
   if (next) {
     try {
-      const job = (JSON.parse(next[1]) as { props?: { pageProps?: { job?: Record<string, unknown> } } })?.props?.pageProps?.job;
+      const pp = (JSON.parse(next[1]) as { props?: { pageProps?: Record<string, unknown> } })?.props?.pageProps ?? {};
+      // Sólides: pageProps.vacancy.description (HTML) e a lista de benefícios. Nem toda página da
+      // Sólides tem o JSON-LD (caso real de 14/11/2026), mas todas têm estes dados.
+      const vacancy = pp.vacancy as { description?: unknown; benefits?: { name?: unknown }[] } | undefined;
+      if (vacancy && typeof vacancy.description === "string") {
+        const beneficios = (Array.isArray(vacancy.benefits) ? vacancy.benefits : [])
+          .map((b) => String(b?.name ?? "").trim()).filter((b) => b).slice(0, 40);
+        const texto = limparTextoPT_(htmlParaTexto_(vacancy.description)
+          + (beneficios.length ? "\n\nBenefícios\n" + beneficios.map((b) => "- " + b).join("\n") : ""), false);
+        if (texto.length >= DESCRICAO.MIN) return texto;
+      }
+      // Gupy: pageProps.job.
+      const job = pp.job as Record<string, unknown> | undefined;
       if (job) {
         const partes = SECOES_GUPY
           .map((s) => ({ titulo: s.titulo, texto: htmlParaTexto_(String(job[s.campo] ?? "")) }))
