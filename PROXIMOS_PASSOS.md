@@ -13,8 +13,9 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
-| 4 — Perfil | **Em andamento** | E4-01 a E4-04 concluídas e testadas no ambiente real (nota do Roberto: 46 parcial para 76, completa). E4-05 (humanizarPT) publicada na versão @20 (14/11/2026). **E4-06 (histórico da nota) implementada, falta publicar.** Depois: Etapa 5 |
-| 5 a 8 — Vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
+| 4 — Perfil | Concluída | E4-01 a E4-06 concluídas e publicadas (E4-06 na versão @21, 14/11/2026). Nota do Roberto: 46 parcial para 76, completa |
+| 5 — Vagas | **Em andamento** | E5-01 (lista de vagas) implementada em 14/11/2026, falta publicar. E5-03 depende da skill `li-candidatura` (E7-01, achado D7) |
+| 6 a 8 — Funil, skill, piloto | A fazer | Ordem do plano; a E7-01 sobe para antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
 
@@ -189,6 +190,38 @@ Ajuste publicado na versão @15 (13/11/2026). O `.clasp.json` deste computador a
 - Para cada entrada: data, nota (e o máximo, se parcial), diferença para a anterior e o que mudou item a item, com a origem da nota nova (PDF, print ou resposta). Item sem origem (análises antes da E4-03) conta como PDF. Mais recente primeiro, até 30 entradas.
 - A página recarrega o histórico sempre que a nota é desenhada (carga da aba, nova análise, nota completada).
 - Testes: `tests/historico.test.js` reproduz a sequência real do Roberto (46 parcial, 70, 70 com as respostas trocando os prints, 76) e confere diferença e mudanças em cada passo, isolamento e o limite de 30; 109 casos no total.
+- Publicada na versão @21 (14/11/2026). **Etapa 4 concluída.**
+
+## Etapa 5 — Vagas
+
+Do plano do piloto (doc no claude.ai):
+
+| ID | Entrega | Critério de aceite | Depende de |
+|---|---|---|---|
+| E5-01 | Lista de vagas com filtros (fonte, modalidade, UF), nota e os botões Adaptar, Mover para o funil e Descartar | Descartar pede um motivo e esconde a vaga para sempre | E3-01 |
+| E5-02 | Descrição da vaga lida da página por `UrlFetchApp`, com campo para colar o texto quando falhar | Toda vaga adaptada tem a descrição salva | E5-01 |
+| E5-03 | `adaptarParaVaga()`: resumo do currículo ajustado, por que contratar você, o que espera da empresa, 5 pontos fortes, 5 a desenvolver com o plano | Nenhum fato fora da ficha confirmada; trechos sem base com [CONFIRMAR] | E5-02, E7-01 |
+| E5-04 | Editor: contador, limite, copiar e salvar versão | Cada edição vira versão na aba `Textos` | E5-03 |
+| E5-05 | Currículo adaptado em Google Doc a partir de modelo, exportado em PDF | PDF com 2 páginas; com 3, a página avisa e sugere o que cortar | E5-03 |
+| E5-06 | Mensagem ao recrutador (li-dm): convite de até 200 caracteres, primeira mensagem e duas cobranças | Contagem visível; nenhum envio automático | E5-03 |
+| E5-07 | Segunda nota por IA só para as vagas acima da nota mínima, comparando com o currículo | No máximo N vagas por dia por usuário (limite em Preferencias) | E5-02, E4-02 |
+
+**E5-01 implementada (14/11/2026).** `src/server/Vagas.ts` (`listarVagas`, `descartarVaga`, `moverParaFunil`) e a página Vagas (antes "em breve"):
+- As vagas do candidato são as linhas dele em `VagasCandidato`, com os dados do anúncio do catálogo `Vagas` (D2); vaga sem anúncio no catálogo não aparece.
+- **Decidido nesta entrega (a confirmar):** vigente = selecionada pelo agente nos últimos **7 dias** (a janela que a E3-05 deixou para a Etapa 5); as outras ficam escondidas, com uma caixa para mostrar. Nova = linha criada nos últimos 3 dias (`vista_em` é a data de criação pelo agente, não "vista pelo candidato").
+- Filtros de fonte, modalidade e UF. A UF sai do `local` ("Cidade/UF", "Cidade - UF" ou a sigla); muitos anúncios só trazem a cidade ou "BR", e esses ficam em "Sem UF no anúncio".
+- Descartar pede um motivo de uma lista e esconde a vaga para sempre. Motivos, decididos pelo Roberto em 14/11/2026: salário ou forma de contratação (CLT/PJ), local ou modalidade, requisitos ou nível da vaga, empresa, e "Outro" com detalhe. Esconde para sempre: não há restaurar, como pede o critério; o agente já não recria nem atualiza vaga descartada. O motivo ainda não muda as notas seguintes (o protótipo sugeria isso; fica para depois).
+- Mover para o funil cria a candidatura na etapa `inserida` na aba `Candidaturas`, sem duplicar; a tela do funil é a Etapa 6.
+- Adaptar aparece desativado até a E5-03, que depende da E7-01.
+- Link do anúncio abre em outra aba e só se for https. Título, empresa e motivos entram por `textContent`.
+- Testes: `tests/vagas.test.js` (vigência, ordem, UF, isolamento, descarte com motivo, funil sem duplicar, eventos); 142 no total.
+
+**Etapas do funil e linha do tempo (decidido pelo Roberto em 14/11/2026; base nesta entrega, tela na Etapa 6).**
+- Etapas, na ordem: **inserida → currículo enviado → entrevista com IA → entrevista com RH → entrevista com gestor → proposta → contratado**. **Recusado** (pela empresa) e **desisti** (pelo candidato) podem vir de qualquer etapa e guardam onde a vaga parou. Dá para pular etapas (nem todo processo tem entrevista com IA). Substituem os status antigos (`nao_enviado`, `enviado`, `aguardando`, `entrevista`, `recusado`, `descartado`); a aba `Candidaturas` estava vazia, nada a migrar.
+- "Aguardando" não é etapa: é o tempo parado desde o último evento (alerta e cobrança, E5-06).
+- Aba nova `Eventos` (`evento_id, usuario_id, vaga_id, tipo, detalhe, em`): uma linha por acontecimento, com a data. Já gravam: inserida no funil e descartada (com o motivo). A data de "selecionada pelo agente" vem de `VagasCandidato.vista_em`, sem mexer no agente. Entra na exclusão de dados (LGPD) por ter `usuario_id`.
+- Etapa 6: mudar de etapa grava um evento; tela com a linha do tempo de cada vaga e os números do funil (tempo médio entre etapas, quantas passam de uma etapa para a outra, em que etapa as recusas acontecem, de onde vêm as vagas que avançam).
+- Depois de publicar, rodar `setupAmbiente()`: cria a aba `Eventos` e atualiza a validação de `Candidaturas.status`.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
