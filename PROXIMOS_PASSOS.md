@@ -210,7 +210,7 @@ Do plano do piloto (doc no claude.ai):
 - As vagas do candidato são as linhas dele em `VagasCandidato`, com os dados do anúncio do catálogo `Vagas` (D2); vaga sem anúncio no catálogo não aparece.
 - **Decidido nesta entrega (a confirmar):** vigente = selecionada pelo agente nos últimos **7 dias** (a janela que a E3-05 deixou para a Etapa 5); as outras ficam escondidas, com uma caixa para mostrar. Nova = linha criada nos últimos 3 dias (`vista_em` é a data de criação pelo agente, não "vista pelo candidato").
 - Filtros de fonte, modalidade e UF. A UF sai do `local` ("Cidade/UF", "Cidade - UF" ou a sigla); muitos anúncios só trazem a cidade ou "BR", e esses ficam em "Sem UF no anúncio".
-- Descartar pede um motivo de uma lista (com "Outro" e detalhe) e esconde a vaga para sempre: não há restaurar, como pede o critério; o agente já não recria nem atualiza vaga descartada. O motivo ainda não muda as notas seguintes (o protótipo sugeria isso; fica para depois).
+- Descartar pede um motivo de uma lista e esconde a vaga para sempre. Motivos, decididos pelo Roberto em 14/11/2026: salário ou forma de contratação (CLT/PJ), local ou modalidade, requisitos ou nível da vaga, empresa, e "Outro" com detalhe. Esconde para sempre: não há restaurar, como pede o critério; o agente já não recria nem atualiza vaga descartada. O motivo ainda não muda as notas seguintes (o protótipo sugeria isso; fica para depois).
 - Mover para o funil cria a candidatura como `nao_enviado` na aba `Candidaturas`, sem duplicar; a tela do funil é a Etapa 6.
 - Adaptar aparece desativado até a E5-03, que depende da E7-01.
 - Link do anúncio abre em outra aba e só se for https. Título, empresa e motivos entram por `textContent`.

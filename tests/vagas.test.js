@@ -41,7 +41,8 @@ module.exports = function () {
   r.ok(v["gupy:4"].link === "" && v["gupy:1"].link.startsWith("https://"), "link só https");
   r.ok(v["gupy:1"].motivos.length === 3 && v["gupy:1"].motivos[1] === "área: noc", "motivos separados");
   r.ok(v["gupy:1"].empresa === "Empresa gupy:1" && v["gupy:1"].titulo === "Líder de NOC", "dados do anúncio vêm do catálogo");
-  r.ok(l.descartadas === 0 && l.motivosDescarte.includes("Outro") && l.diasVigente === 7, "metadados da lista");
+  r.ok(l.descartadas === 0 && l.diasVigente === 7, "metadados da lista");
+  r.ok(l.motivosDescarte.join(" | ") === "Salário ou forma de contratação (CLT/PJ) | Local ou modalidade | Requisitos ou nível da vaga | Empresa | Outro", "4 motivos agrupados e Outro");
 
   // Isolamento.
   const lb = ctx.listarVagas(B);
@@ -61,8 +62,8 @@ module.exports = function () {
   r.ok(!por(l)["gupy:3"] && l.descartadas === 1, "descartada some da lista e entra na contagem");
   r.erro(() => ctx.descartarVaga(A, "gupy:3", "Outro", "de novo"), /já foi descartada/, "não descarta duas vezes");
   r.ok(abas.Log.d.some((x) => x[2] === "vaga_descartada" && /gupy:3: Outro/.test(x[3])), "Log registra o descarte");
-  ctx.descartarVaga(A, "gupy:2", "Local não serve", "");
-  r.ok(abas.VagasCandidato.d.find((x) => x[1] === "gupy:2")[6] === "Local não serve", "motivo sem detalhe");
+  ctx.descartarVaga(A, "gupy:2", "Local ou modalidade", "");
+  r.ok(abas.VagasCandidato.d.find((x) => x[1] === "gupy:2")[6] === "Local ou modalidade", "motivo sem detalhe");
 
   // Funil.
   r.erro(() => ctx.moverParaFunil(A, "gupy:3"), /descartada/, "vaga descartada não vai para o funil");

@@ -16,14 +16,12 @@
 
 const VAGAS_TELA = { DIAS_VIGENTE: 7, DIAS_NOVA: 3, MAX_DETALHE: 200 } as const;
 
+/** Quatro motivos agrupados e "Outro", com detalhe (decidido em 14/11/2026). */
 const MOTIVOS_DESCARTE = [
-  "Salário abaixo do esperado",
-  "Modalidade não serve",
-  "Local não serve",
-  "Requisitos que não tenho",
-  "Nível acima ou abaixo do meu",
-  "Empresa não me interessa",
-  "Já me candidatei por fora",
+  "Salário ou forma de contratação (CLT/PJ)",
+  "Local ou modalidade",
+  "Requisitos ou nível da vaga",
+  "Empresa",
   "Outro",
 ];
 
