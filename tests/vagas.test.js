@@ -37,6 +37,7 @@ module.exports = function () {
   r.ok(l.vagas.map((x) => x.vagaId).join(",") === "gupy:1,gupy:3,gupy:2,gupy:4", "vigentes primeiro, por nota; depois as antigas, por nota");
   r.ok(v["gupy:1"].vigente && v["gupy:3"].vigente && !v["gupy:2"].vigente && !v["gupy:4"].vigente, "vigente: selecionada nos últimos 7 dias");
   r.ok(v["gupy:1"].nova && !v["gupy:3"].nova, "nova: linha criada nos últimos 3 dias");
+  r.ok(!isNaN(new Date(v["gupy:1"].criadaEm)) && new Date(v["gupy:4"].criadaEm).getDate() === 11 && v["gupy:4"].selecionadaEm === "", "criadaEm vem de vista_em (Date ou dd/mm/aaaa); sem selecionada_em fica vazio");
   r.ok(v["gupy:1"].uf === "SC" && v["gupy:2"].uf === "RS" && v["gupy:3"].uf === "" && v["gupy:4"].uf === "SC", "UF de \"Cidade/UF\", \"Cidade - UF\" e sigla; \"BR\" fica sem UF");
   r.ok(v["gupy:4"].link === "" && v["gupy:1"].link.startsWith("https://"), "link só https");
   r.ok(v["gupy:1"].motivos.length === 3 && v["gupy:1"].motivos[1] === "área: noc", "motivos separados");

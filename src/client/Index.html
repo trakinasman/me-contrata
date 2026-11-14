@@ -328,6 +328,16 @@
       el("lista-vagas").replaceChildren.apply(el("lista-vagas"), lista.map(cartaoVaga));
     }
 
+    // "hoje", "ontem" ou "há N dias", contando dias de calendário (não blocos de 24 horas).
+    function haQuantosDias(iso) {
+      var d = new Date(iso);
+      if (isNaN(d)) return "";
+      var hoje = new Date();
+      var dias = Math.round((new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()) -
+        new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+      return dias <= 0 ? "hoje" : dias === 1 ? "ontem" : "há " + dias + " dias";
+    }
+
     function cartaoVaga(v) {
       var classe = v.nota == null ? "" : v.nota >= 80 ? "ok" : v.nota >= 65 ? "warn" : "bad";
       var detalhes = [v.empresa, v.local || v.uf, NOME_MODALIDADE[v.modalidade] || v.modalidade, v.fonte].filter(function (x) { return x; });
@@ -338,8 +348,9 @@
         h("div", { class: "row entre" },
           h("div", { class: "corpo" }, h("h3", {}, titulo), h("div", { class: "small muted" }, detalhes.join(" · "))),
           h("div", { class: "row" },
-            v.nova ? h("span", { class: "chip ok" }, "nova") : null,
-            v.vigente ? null : h("span", { class: "chip" }, "antiga"),
+            v.nova ? h("span", { class: "chip ok", title: "Quando o agente trouxe esta vaga" }, "chegou " + haQuantosDias(v.criadaEm)) : null,
+            v.vigente ? null : h("span", { class: "chip", title: "O agente não traz esta vaga desde então: o anúncio pode ter fechado" },
+              v.selecionadaEm ? "fora da busca " + haQuantosDias(v.selecionadaEm) : "fora da busca"),
             h("span", { class: "chip " + classe, title: "Nota pelas suas preferências e listas" }, v.nota == null ? "sem nota" : "nota " + v.nota))),
         v.motivos.length ? h("div", { class: "small muted" }, "Por quê: " + v.motivos.join(" · ")) : null,
         descartando === v.vagaId ? formDescarte(v) : acoesVaga(v));

@@ -41,6 +41,8 @@ interface VagaTela {
   notaIa: number | null;
   motivos: string[];
   selecionadaEm: string;
+  /** Quando o agente trouxe a vaga pela primeira vez (VagasCandidato.vista_em). */
+  criadaEm: string;
   vigente: boolean;
   nova: boolean;
   noFunil: boolean;
@@ -175,6 +177,7 @@ function vagasDoUsuario_(usuarioId: string): ListaVagas {
       notaIa: numeroOuNulo_(l[ce("nota_ia")]),
       motivos: String(l[ce("motivos")]).split(";").map((m) => m.trim()).filter((m) => m),
       selecionadaEm: selecionada ? selecionada.toISOString() : "",
+      criadaEm: criada ? criada.toISOString() : "",
       vigente: !!selecionada && agora - selecionada.getTime() <= VAGAS_TELA.DIAS_VIGENTE * dia,
       nova: !!criada && agora - criada.getTime() <= VAGAS_TELA.DIAS_NOVA * dia,
       noFunil: noFunil.has(id),
