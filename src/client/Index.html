@@ -168,6 +168,12 @@
             <p id="erro-prints" class="erro" role="alert"></p>
             <div><button class="btn prim" type="submit">Completar a nota</button></div>
           </form>
+          <div class="card stack" id="card-historico" hidden>
+            <h2>Histórico da nota</h2>
+            <p class="muted small">Cada análise do PDF e cada nota completada por print ou resposta fica guardada. Mais recente primeiro.</p>
+            <p id="erro-historico" class="erro" role="alert"></p>
+            <div id="lista-historico" class="stack"></div>
+          </div>
           <div class="card stack">
             <div class="row entre">
               <h2>Reescritas do perfil</h2>
@@ -301,6 +307,7 @@
 
     function desenharAnalise(a) {
       el("form-prints").hidden = !a;
+      carregarHistorico();
       if (!a) { el("resultado-analise").replaceChildren(h("p", { class: "muted small" }, "Nenhuma análise ainda.")); return; }
       // Item já avaliado por print não aceita resposta: o servidor também ignora.
       PERGUNTAS_PRINT.forEach(function (p) {
@@ -406,6 +413,39 @@
       chamar("analisarPerfil", [tokenAtual], function (a) { botao.disabled = false; desenharAnalise(a); },
         function (msg) { botao.disabled = false; el("erro-analise").textContent = msg; carregarAnalise(); });
     });
+
+    // ---------- Histórico da nota (E4-06) ----------
+    var ORIGEM_NOTA = { pdf: "PDF", print: "print", resposta: "resposta" };
+
+    function carregarHistorico() {
+      el("erro-historico").textContent = "";
+      chamar("historicoNotas", [tokenAtual], desenharHistorico, function (msg) { el("erro-historico").textContent = msg; });
+    }
+
+    function textoNota(n) { return n == null ? "não avaliado" : String(n); }
+
+    function desenharHistorico(r) {
+      var entradas = (r && r.entradas) || [];
+      el("card-historico").hidden = !entradas.length;
+      el("lista-historico").replaceChildren.apply(el("lista-historico"), entradas.map(function (e, i) {
+        var quando = new Date(e.criadoEm);
+        var data = isNaN(quando) ? e.criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+        var delta = e.delta == null ? null : e.delta > 0 ? "+" + e.delta : e.delta < 0 ? String(e.delta) : "0";
+        var classe = e.delta == null || e.delta === 0 ? "" : e.delta > 0 ? "ok" : "bad";
+        var mudancas = e.mudancas.map(function (m) {
+          return m.nome + " " + textoNota(m.de) + " \u2192 " + textoNota(m.para) + " (" + (ORIGEM_NOTA[m.origem] || m.origem) + ")";
+        });
+        return h("div", { class: "item-ficha historico" + (i === 0 ? " atual" : "") },
+          h("div", { class: "row entre" },
+            h("span", {}, h("b", {}, e.total + " de 100"),
+              e.parcial ? h("span", { class: "small muted" }, " (parcial, até " + e.maximo + ")") : null),
+            h("span", {}, delta != null ? h("span", { class: "chip " + classe }, delta) : null, " ",
+              h("span", { class: "small muted" }, data))),
+          h("div", { class: "small" },
+            e.delta == null ? "Primeira análise." :
+            mudancas.length ? mudancas.join("; ") + "." : "Nenhum item mudou."));
+      }));
+    }
 
     // ---------- Reescritas do perfil (E4-04) ----------
     // Texto da IA entra por textContent; [CONFIRMAR] vira destaque, sem innerHTML.
