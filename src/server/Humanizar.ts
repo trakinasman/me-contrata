@@ -271,15 +271,22 @@ function verbosPrimeiraPessoa_(t: string): number {
  * Termos da seção Palavras que evito, para a avaliação apontar. Aceita listas separadas
  * por vírgula ("Termos: sinergia, mindset") e expressões entre aspas.
  */
+/** Palavras de ligação que nunca são "termo a evitar", mesmo que apareçam soltas numa lista. */
+const PALAVRAS_COMUNS_PT = ["como", "que", "para", "com", "sem", "por", "uma", "das", "dos", "nas", "nos", "mais", "muito", "também", "outros", "outras", "etc"];
+
 function termosEvitar_(itens: string[]): string[] {
   const termos = new Set<string>();
   for (const item of itens) {
+    // Item com termos entre aspas ('Anglicismos, como "deliverar" e "fazer o follow"'): valem s\u00F3
+    // os termos entre aspas. O resto \u00E9 a frase que os apresenta ("como" virava termo: achado de 14/11/2026).
     const entreAspas = item.match(/["\u201C\u201D]([^"\u201C\u201D]{3,60})["\u201C\u201D]/g) || [];
     for (const a of entreAspas) termos.add(a.replace(/["\u201C\u201D]/g, "").trim().toLowerCase());
-    const semAspas = item.replace(/["\u201C\u201D][^"\u201C\u201D]*["\u201C\u201D]/g, "").replace(/^[^:]{0,40}:/, "");
-    for (const parte of semAspas.split(/,| e | ou /)) {
+    if (entreAspas.length) continue;
+    // Sen\u00E3o, lista separada por v\u00EDrgula depois do r\u00F3tulo ("Termos: sinergia, mindset").
+    const semRotulo = item.replace(/^[^:]{0,40}:/, "");
+    for (const parte of semRotulo.split(/,| e | ou /)) {
       const p = parte.replace(/\([^)]*\)/g, "").replace(/[.;]/g, "").trim().toLowerCase();
-      if (p.length >= 3 && p.length <= 40 && p.split(/\s+/).length <= 3) termos.add(p);
+      if (p.length >= 3 && p.length <= 40 && p.split(/\s+/).length <= 3 && !PALAVRAS_COMUNS_PT.includes(p)) termos.add(p);
     }
   }
   return [...termos];
