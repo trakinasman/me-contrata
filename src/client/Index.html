@@ -88,6 +88,23 @@
         </div>
       </section>
 
+      <section id="pag-vagas" class="stack" hidden>
+        <div class="row entre">
+          <h1>Vagas</h1>
+          <span class="small muted" id="resumo-vagas"></span>
+        </div>
+        <p class="muted small">As vagas que o agente selecionou para você, com a nota e o porquê. Descartar esconde a vaga para sempre: o agente não a traz de novo.</p>
+        <div class="row filtros">
+          <div><label for="f-fonte">Fonte</label><select id="f-fonte"></select></div>
+          <div><label for="f-modalidade">Modalidade</label><select id="f-modalidade"></select></div>
+          <div><label for="f-uf">UF</label><select id="f-uf"></select></div>
+        </div>
+        <label class="linha"><input type="checkbox" id="f-antigas"> <span id="rotulo-antigas">Mostrar também as que o agente parou de trazer</span></label>
+        <p id="erro-vagas" class="erro" role="alert"></p>
+        <p id="msg-vagas" class="msg" role="status" aria-live="polite"></p>
+        <div id="lista-vagas" class="stack"><p class="muted small">Carregando…</p></div>
+      </section>
+
       <section id="pag-embreve" hidden>
         <div class="card"><p class="muted">Esta tela chega nas próximas etapas.</p></div>
       </section>
@@ -212,7 +229,7 @@
     function salvarToken(t) { tokenAtual = t; try { localStorage.setItem(CHAVE, t); } catch (e) {} }
     // Sem sessão, nada do usuário anterior pode continuar na memória da página.
     function apagarToken() {
-      tokenAtual = null; ficha = null; editando = null; curriculos = null;
+      tokenAtual = null; ficha = null; editando = null; curriculos = null; vagas = null; descartando = null;
       try { localStorage.removeItem(CHAVE); } catch (e) {}
     }
 
@@ -252,12 +269,146 @@
       rotear();
     }
 
+    // ---------- Vagas (E5-01) ----------
+    // Título, empresa e motivos vêm de anúncios: entram por textContent (via h), nunca por innerHTML.
+    var vagas = null;        // última lista recebida do servidor
+    var descartando = null;  // vaga com o formulário de descarte aberto
+    var NOME_MODALIDADE = { remoto: "Remoto", hibrido: "Híbrido", presencial: "Presencial" };
+    var SEM_UF = "__sem_uf__";
+
+    function carregarVagas() {
+      el("erro-vagas").textContent = "";
+      el("lista-vagas").replaceChildren(h("p", { class: "muted small" }, "Carregando…"));
+      chamar("listarVagas", [tokenAtual], function (r) { vagas = r; montarFiltros(); desenharVagas(); }, function (msg) {
+        el("lista-vagas").replaceChildren(h("p", { class: "erro" }, msg),
+          h("button", { class: "btn mini", type: "button", onclick: carregarVagas }, "Tentar de novo"));
+      });
+    }
+
+    function preencherSelect(sel, opcoes, rotuloTodas) {
+      var atual = sel.value;
+      sel.replaceChildren.apply(sel, [h("option", { value: "" }, rotuloTodas)].concat(opcoes.map(function (o) {
+        return h("option", { value: o[0] }, o[1]);
+      })));
+      if (opcoes.some(function (o) { return o[0] === atual; })) sel.value = atual;
+    }
+
+    function unicos(lista) {
+      return lista.filter(function (x, i) { return x && lista.indexOf(x) === i; }).sort();
+    }
+
+    function montarFiltros() {
+      var vs = vagas.vagas;
+      preencherSelect(el("f-fonte"), unicos(vs.map(function (v) { return v.fonte; })).map(function (f) { return [f, f]; }), "Todas");
+      preencherSelect(el("f-modalidade"), unicos(vs.map(function (v) { return v.modalidade; })).map(function (m) { return [m, NOME_MODALIDADE[m] || m]; }), "Todas");
+      var ufs = unicos(vs.map(function (v) { return v.uf; })).map(function (u) { return [u, u]; });
+      if (vs.some(function (v) { return !v.uf; })) ufs.push([SEM_UF, "Sem UF no anúncio"]);
+      preencherSelect(el("f-uf"), ufs, "Todas");
+      el("rotulo-antigas").textContent = "Mostrar também as que o agente não traz há mais de " + vagas.diasVigente + " dias";
+    }
+
+    function vagasFiltradas() {
+      var fonte = el("f-fonte").value, mod = el("f-modalidade").value, uf = el("f-uf").value, antigas = el("f-antigas").checked;
+      return vagas.vagas.filter(function (v) {
+        return (antigas || v.vigente) && (!fonte || v.fonte === fonte) && (!mod || v.modalidade === mod) &&
+          (!uf || (uf === SEM_UF ? !v.uf : v.uf === uf));
+      });
+    }
+
+    function desenharVagas() {
+      var lista = vagasFiltradas();
+      var vigentes = vagas.vagas.filter(function (v) { return v.vigente; }).length;
+      el("resumo-vagas").textContent = vigentes + (vigentes === 1 ? " vaga atual" : " vagas atuais") +
+        (vagas.descartadas ? " · " + vagas.descartadas + (vagas.descartadas === 1 ? " descartada" : " descartadas") : "");
+      if (!lista.length) {
+        el("lista-vagas").replaceChildren(h("p", { class: "muted small" }, vagas.vagas.length
+          ? "Nenhuma vaga com esses filtros." : "Nenhuma vaga ainda. O agente busca vagas todo dia de manhã."));
+        return;
+      }
+      el("lista-vagas").replaceChildren.apply(el("lista-vagas"), lista.map(cartaoVaga));
+    }
+
+    function cartaoVaga(v) {
+      var classe = v.nota == null ? "" : v.nota >= 80 ? "ok" : v.nota >= 65 ? "warn" : "bad";
+      var detalhes = [v.empresa, v.local || v.uf, NOME_MODALIDADE[v.modalidade] || v.modalidade, v.fonte].filter(function (x) { return x; });
+      var titulo = v.link
+        ? h("a", { href: v.link, target: "_blank", rel: "noopener noreferrer" }, v.titulo)
+        : v.titulo;
+      return h("div", { class: "card stack vaga" + (v.vigente ? "" : " antiga") },
+        h("div", { class: "row entre" },
+          h("div", { class: "corpo" }, h("h3", {}, titulo), h("div", { class: "small muted" }, detalhes.join(" · "))),
+          h("div", { class: "row" },
+            v.nova ? h("span", { class: "chip ok" }, "nova") : null,
+            v.vigente ? null : h("span", { class: "chip" }, "antiga"),
+            h("span", { class: "chip " + classe, title: "Nota pelas suas preferências e listas" }, v.nota == null ? "sem nota" : "nota " + v.nota))),
+        v.motivos.length ? h("div", { class: "small muted" }, "Por quê: " + v.motivos.join(" · ")) : null,
+        descartando === v.vagaId ? formDescarte(v) : acoesVaga(v));
+    }
+
+    function acoesVaga(v) {
+      return h("div", { class: "row" },
+        h("button", { class: "btn mini", type: "button", disabled: true, title: "Chega com a adaptação de textos por vaga (E5-03)" }, "Adaptar (em breve)"),
+        v.noFunil ? h("span", { class: "chip ok" }, "no funil") :
+          h("button", { class: "btn mini", type: "button", onclick: function (ev) { moverVaga(v, ev.target); } }, "Mover para o funil"),
+        h("button", { class: "btn mini perigo", type: "button", onclick: function () { descartando = v.vagaId; desenharVagas(); } }, "Descartar"));
+    }
+
+    function moverVaga(v, botao) {
+      botao.disabled = true;
+      el("erro-vagas").textContent = "";
+      chamar("moverParaFunil", [tokenAtual, v.vagaId], function () {
+        v.noFunil = true;
+        desenharVagas();
+        avisarVagas("Vaga no funil, como não enviada.");
+      }, function (msg) { botao.disabled = false; el("erro-vagas").textContent = msg; });
+    }
+
+    function formDescarte(v) {
+      var motivo = h("select", { "aria-label": "Motivo do descarte" },
+        [h("option", { value: "" }, "Escolha o motivo")].concat(vagas.motivosDescarte.map(function (m) { return h("option", { value: m }, m); })));
+      var detalhe = h("input", { type: "text", maxlength: "200", placeholder: "Detalhe (obrigatório em Outro)", "aria-label": "Detalhe do motivo" });
+      var erro = h("p", { class: "erro", role: "alert" });
+      var confirmar = h("button", { class: "btn mini perigo", type: "submit" }, "Descartar para sempre");
+      var cancelar = h("button", { class: "btn mini", type: "button", onclick: function () { descartando = null; desenharVagas(); } }, "Cancelar");
+      return h("form", {
+        class: "stack descarte", novalidate: true,
+        onsubmit: function (ev) {
+          ev.preventDefault();
+          if (!motivo.value) { erro.textContent = "Escolha o motivo."; return; }
+          if (motivo.value === "Outro" && !detalhe.value.trim()) { erro.textContent = "Escreva o motivo."; return; }
+          [motivo, detalhe, confirmar, cancelar].forEach(function (x) { x.disabled = true; });
+          chamar("descartarVaga", [tokenAtual, v.vagaId, motivo.value, detalhe.value], function (r) {
+            vagas = r;
+            descartando = null;
+            montarFiltros();
+            desenharVagas();
+            avisarVagas("Vaga descartada. O agente não vai trazê-la de novo.");
+          }, function (msg) {
+            [motivo, detalhe, confirmar, cancelar].forEach(function (x) { x.disabled = false; });
+            erro.textContent = msg;
+          });
+        }
+      }, h("p", { class: "small" }, "Por que descartar? A vaga some da lista e o agente não a traz de novo."),
+        motivo, detalhe, erro, h("div", { class: "row" }, confirmar, cancelar));
+    }
+
+    var timerVagas = null;
+    function avisarVagas(texto) {
+      el("msg-vagas").textContent = texto;
+      clearTimeout(timerVagas);
+      timerVagas = setTimeout(function () { el("msg-vagas").textContent = ""; }, 4000);
+    }
+
+    ["f-fonte", "f-modalidade", "f-uf", "f-antigas"].forEach(function (id) {
+      el(id).addEventListener("change", function () { if (vagas) desenharVagas(); });
+    });
+
     // ---------- Navegação por hash ----------
     // A página roda num iframe do Apps Script com <base target="_top">: um link
     // "#perfil" levaria a janela inteira para o endereço do iframe (tela branca).
     // Por isso os links internos são interceptados e a rota fica em rotaAtual;
     // google.script.history atualiza o endereço da janela e o botão Voltar.
-    var PAGINAS = ["inicio", "embreve", "perfil"];
+    var PAGINAS = ["inicio", "embreve", "perfil", "vagas"];
     var rotaAtual = "";
     function irPara(rota) {
       rotaAtual = rota;
@@ -287,6 +438,7 @@
       Array.prototype.forEach.call(document.querySelectorAll("#menu a"), function (a) {
         a.classList.toggle("ativo", a.getAttribute("data-pag") === pag);
       });
+      if (visivel === "vagas" && !vagas) carregarVagas();
       if (visivel !== "perfil") return;
       var aba = ["dados", "curriculo"].indexOf(partes[1]) >= 0 ? partes[1] : "ficha";
       el("aba-ficha").hidden = aba !== "ficha";
