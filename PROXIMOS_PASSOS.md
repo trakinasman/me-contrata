@@ -233,6 +233,8 @@ Do plano do piloto (doc no claude.ai):
 - Achado no caminho: a proteção de links da `limparTextoPT_` (E4-05) pegava como parte do link tudo até o próximo espaço (aspas, parênteses, travessão). Agora o link para nesses caracteres e o e-mail segue o formato usual.
 - Testes: `tests/descricoes.test.js` com páginas sintéticas no formato de cada fonte (as reais não vão para o repositório); 174 casos no total.
 - Depois de publicar, rodar `setupAmbiente()`: cria a aba `Descricoes`.
+- Publicada na versão @24. **Teste real (14/11/2026):** Gupy lida do anúncio em duas vagas (7.104 e 2.585 caracteres, iguais ao teste local); InHire falhou como esperado e a descrição colada foi salva (10.869 caracteres). **Sólides falhou numa vaga** (Raro Labs): nem toda página da Sólides tem o JSON-LD, mas todas guardam a vaga em `__NEXT_DATA__` (`vacancy.description` e `benefits`); o extrator passou a ler esse formato (a vaga sai com 4.118 caracteres). A Catho ficou sem teste real (mesmo caminho da InHire: colar).
+- Emojis compostos (ex.: pessoa + formatura nos benefícios da Stefanini) se desmontavam porque a limpeza tirava o junta-emoji U+200D; agora ele fica entre dois emojis e sai no resto.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.

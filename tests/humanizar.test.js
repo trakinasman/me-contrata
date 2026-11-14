@@ -20,6 +20,8 @@ module.exports = function () {
   r.ok(limpar("“x” e ‘y’…") === "\"x\" e 'y'...", "aspas curvas e reticências de um caractere");
   r.ok(limpar("a b​c⁠d﻿e­f") === "a bcdef", "espaço duro e caracteres invisíveis");
   r.ok(limpar("linha junta") === "linhajunta", "separador de linha U+2028 sai");
+  r.ok(limpar("Mentoria \u{1F468}\u{1F3FC}‍\u{1F393} e cursos") === "Mentoria \u{1F468}\u{1F3FC}‍\u{1F393} e cursos" && limpar("pala‍vra") === "palavra",
+    "junta-emoji (U+200D) fica entre dois emojis e sai no resto (caso real da Stefanini)");
   r.ok(limpar("um\n\n\n\ndois\n• item") === "um\n\ndois\n- item", "linhas em branco repetidas e marcador de lista");
   r.ok(limpar("quebra\nde linha", true) === "quebra de linha", "título: vira uma linha só");
   r.ok(limpar("veja https://exemplo.com/a-b_c?x=1&y=2 e mail.nome+tag@x.com.br") === "veja https://exemplo.com/a-b_c?x=1&y=2 e mail.nome+tag@x.com.br", "URL e e-mail ficam intactos");

@@ -105,7 +105,9 @@ function limparTextoPT_(v: string, umaLinha: boolean): string {
   });
   t = t
     .replace(/[\u00A0\u202F\u2007\u2009\u200A]/g, " ")
-    .replace(/[\u200B-\u200F\u2028-\u202E\u2060-\u2064\u206A-\u206F\uFEFF\u00AD]/g, "")
+    .replace(/[\u200B\u200C\u200E\u200F\u2028-\u202E\u2060-\u2064\u206A-\u206F\uFEFF\u00AD]/g, "")
+    // U+200D junta emojis compostos (pessoa + formatura): fica s\u00F3 entre dois emojis.
+    .replace(/(?<![\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F])\u200D|\u200D(?!\p{Extended_Pictographic})/gu, "")
     .replace(/[\u{E0000}-\u{E007F}]/gu, "")
     .replace(/\s*\u2014\s*/g, ", ")
     .replace(/\s*\u2013\s*(?=\d)/g, "-")
@@ -195,7 +197,8 @@ function avaliarTextoPT_(texto: string, evitar: string[] = []): AvaliacaoPT {
   });
 
   // 4. Marcas tipográficas que um teclado não produz.
-  const invisiveis = (t.match(/[\u200B-\u200F\u2028-\u202E\u2060-\u2064\uFEFF\u00AD]/g) || []).length;
+  const invisiveis = (t.match(/[\u200B\u200C\u200E\u200F\u2028-\u202E\u2060-\u2064\uFEFF\u00AD]/g) || []).length
+    + (t.match(/(?<![\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F])\u200D|\u200D(?!\p{Extended_Pictographic})/gu) || []).length;
   const travessoes = (t.match(/\u2014/g) || []).length;
   const aspas = (t.match(/[\u2018\u2019\u201C\u201D]/g) || []).length;
   const reticencias = (t.match(/\u2026/g) || []).length;
