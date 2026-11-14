@@ -97,7 +97,9 @@ interface AvaliacaoPT {
  */
 function limparTextoPT_(v: string, umaLinha: boolean): string {
   const enderecos: string[] = [];
-  let t = String(v ?? "").replace(/https?:\/\/\S+|www\.\S+|\S+@\S+\.\S+/g, (m) => {
+  // O endereço para em espaço, aspas, parênteses, colchetes e travessões: em `link")—` o travessão
+  // fica fora e é limpo. E-mail no formato usual (nome@dominio.tld).
+  let t = String(v ?? "").replace(/(?:https?:\/\/|www\.)[^\s"'<>()[\]{}–—]+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, (m) => {
     enderecos.push(m);
     return `\u0000END${enderecos.length - 1}\u0000`;
   });

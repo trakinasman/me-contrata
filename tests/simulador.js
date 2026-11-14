@@ -56,6 +56,8 @@ function criarAmbiente({ dono = "dono@teste.local" } = {}) {
   const chamadasIA = [];
   const respostasIA = [];
   const emails = [];
+  const paginas = {}; // url -> { codigo, html }: páginas de anúncio que o UrlFetchApp "baixa"
+  const buscas = [];  // urls de anúncio pedidas
 
   const ctx = {
     console: { log() {}, error() {}, warn() {} },
@@ -91,7 +93,12 @@ function criarAmbiente({ dono = "dono@teste.local" } = {}) {
     },
     UrlFetchApp: {
       fetch: (url, opt) => {
-        if (!/api\.anthropic\.com/.test(url)) throw new Error("URL inesperada no teste: " + url);
+        if (!/api\.anthropic\.com/.test(url)) {
+          buscas.push(url);
+          const pg = paginas[url];
+          if (!pg) throw new Error("URL inesperada no teste: " + url);
+          return { getResponseCode: () => pg.codigo ?? 200, getContentText: () => pg.html ?? "" };
+        }
         chamadasIA.push(JSON.parse(opt.payload));
         if (!respostasIA.length) throw new Error("Teste sem resposta da IA na fila");
         const r = respostasIA.shift();
@@ -139,7 +146,7 @@ function criarAmbiente({ dono = "dono@teste.local" } = {}) {
     return item;
   }
 
-  return { ctx, g, abas, cache, drive, chamadasIA, respostasIA, emails, usuario, ficha };
+  return { ctx, g, abas, cache, drive, chamadasIA, respostasIA, emails, paginas, buscas, usuario, ficha };
 }
 
 /** Imagens mínimas com a assinatura certa, para os testes de prints. */
