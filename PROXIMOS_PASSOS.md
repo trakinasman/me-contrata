@@ -13,7 +13,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 1 — Base e login | Concluída | E1-03, E1-04, E1-05 testados. As validações de UF, `ativo` e Preferencias (achado D1) entraram com a E2-01. E1-02 só com a navegação provisória; as telas vêm nas próximas etapas |
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
-| 4 — Perfil | **Em andamento** | E4-01, E4-02 e E4-03 concluídas (E4-03 testada no ambiente real em 13/11/2026: nota de 46 parcial para 76, completa). **E4-04 (reescritas) em andamento.** E4-05 pode ser feita em paralelo |
+| 4 — Perfil | **Em andamento** | E4-01 a E4-04 concluídas e testadas no ambiente real (nota do Roberto: 46 parcial para 76, completa). **E4-05 (humanizarPT) implementada em 14/11/2026, falta publicar.** Próxima: E4-06 (histórico da nota) |
 | 5 a 8 — Vagas, funil, skill, piloto | A fazer | Ordem do plano; a skill `li-candidatura` (etapa 7) precisa estar pronta antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -172,6 +172,16 @@ Ajuste publicado na versão @15 (13/11/2026). O `.clasp.json` deste computador a
 - Erro de precisão: juntou dois fatos ("a esteira e todos os dashboards" com Gemini, Claude e Codex; na ficha, os dashboards são só Gemini e Claude). O prompt ganhou a regra de não juntar fatos nem acrescentar causa ou efeito que o item não traz.
 - Acréscimo vindo do perfil: "com a operação sustentando o crescimento", no item da base de clientes. Coberto pela mesma regra.
 - Ficha do Roberto: item confirmado com o e-mail de contato (gmail), para o [CONFIRMAR] não voltar.
+- Versão 2, depois do ajuste (@19): sem fatos misturados nem acréscimos vindos do perfil, o [CONFIRMAR] do e-mail sumiu, todos os fatos conferem com a ficha. Título 189, Sobre 1.394, cargo 563 caracteres; US$ 0,0623. Pronta para uso.
+
+**Testes no repositório (14/11/2026).** Os testes simulados ficavam numa pasta temporária e se perderam quando a sessão reiniciou. Agora estão em `tests/`: `simulador.js` (Apps Script falso no Node: planilha, cache, lock, Drive, e-mail e API do Claude) e um arquivo por parte (ficha, completar a nota, reescritas, humanizar). `npm test` gera o `dist/` e roda tudo; 97 casos.
+
+**E4-05 implementada (14/11/2026).** `src/server/Humanizar.ts`: porta do `humanize.py`/`detect.py` da skill `li-human` para português, sem dependência.
+- `limparTextoPT_`: caracteres invisíveis (inclusive o separador de linha U+2028), espaços especiais, travessão, meia-risca, aspas curvas, reticências de um caractere, marcador de lista. URL e e-mail ficam intactos. Substitui a limpeza que a E4-04 tinha.
+- `avaliarTextoPT_`: nota de 0 a 100 com as cinco checagens do `detect.py` (ritmo, concretude, vocabulário, marcas tipográficas, voz) e o mesmo veredito (passa a partir de 70 com nenhuma checagem abaixo de 55; revisar a partir de 50; abaixo, parece IA). Lista de sinais: 26 termos de vocabulário de IA, 10 estruturas típicas e as palavras da seção Palavras que evito da ficha.
+- Diferenças da ferramenta original: em português o vocabulário é só apontado, não trocado (verbo e adjetivo flexionam); a voz conta pronomes de 1ª e 2ª pessoa, "a gente", pretérito em -ei e verbo no presente em primeira pessoa no começo da frase ("Lidero", "Audito"), porque o português omite o sujeito; fronteira de palavra que entende acento (o `\b` do JavaScript não vê "é" nem "ê" como letra, e "você" ou "não é só X, é Y" nunca casariam).
+- Calibração com textos desta conversa: ROI escrito à mão 77 (passa); ROI de outra ferramenta, com travessões e aspas curvas, 41 (parece IA); texto clichê 35 (parece IA); Sobre da E4-04 versão 2, 65 (revisar: tópicos de tamanho parecido).
+- Na página, cada reescrita mostra "Naturalidade N · veredito", os pontos para revisar e, recolhido, como a nota é calculada.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.

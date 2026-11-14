@@ -48,6 +48,8 @@ module.exports = function () {
   r.ok(!/[—“”…​ ]/.test(t.linkedin_sobre.conteudo), "Sobre: sem travessão, aspas curvas, reticências unicode, invisíveis ou nbsp");
   r.ok(t.linkedin_sobre.conteudo.includes("entro.\n\nCoordeno") && !/\n{3,}/.test(t.linkedin_sobre.conteudo), "Sobre: mantém parágrafos");
   r.ok(t.linkedin_cargo_atual.aConfirmar === 1, "conta [CONFIRMAR]");
+  r.ok(res.textos.every((x) => x.avaliacao && typeof x.avaliacao.nota === "number" && Array.isArray(x.avaliacao.sinais)), "cada texto traz a avaliação de naturalidade (E4-05)");
+  r.ok(ctx.ultimasReescritas(A).textos.every((x) => x.avaliacao && x.avaliacao.checagens.length === 5), "ultimasReescritas também avalia");
   r.ok(res.conferir.length === 1 && res.textos.every((x) => x.versao === 1), "devolve o que conferir; versão 1");
   const linhasA = abas.Textos.d.filter((l) => l[1] === "usr-A");
   r.ok(linhasA.length === 3 && linhasA.every((l) => l[2] === "" && l[7] === false && ehData(l[8])), "3 linhas em Textos, sem vaga, não editadas");

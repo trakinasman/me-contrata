@@ -7,8 +7,8 @@
  *   fonte: o que aparece nele e não está na ficha não entra, ou sai com [CONFIRMAR].
  *   Itens proibidos entram como o que nunca afirmar; itens a confirmar não entram.
  * - O tom vem das seções Como escrevo, Palavras que uso e Palavras que evito.
- * - O servidor limpa marcas de texto gerado (travessão, aspas curvas, caracteres
- *   invisíveis) e confere os limites: título até 220 caracteres, Sobre até 1.400 (rubrica).
+ * - O servidor limpa marcas de texto gerado com limparTextoPT_ (E4-05), confere os limites
+ *   e avalia cada texto com avaliarTextoPT_. Os limites: título até 220 caracteres, Sobre até 1.400 (rubrica).
  *   Fora do limite gera uma nova tentativa; se falhar de novo, erro.
  * - Cada geração grava uma versão nova de cada texto na aba Textos (tipo linkedin_*,
  *   sem vaga). Perfil, ficha e análise vão para a IA dentro de tags, como dado.
@@ -41,6 +41,8 @@ interface TextoReescrito {
   versao: number;
   criadoEm: string;
   aConfirmar: number;
+  /** Quanto o texto soa natural (E4-05), com os sinais para revisar. */
+  avaliacao: AvaliacaoPT;
 }
 
 interface Reescritas {
@@ -53,6 +55,8 @@ interface FichaReescrita {
   fatos: string[];
   tom: string[];
   proibidos: string[];
+  /** Itens da seção Palavras que evito, para o humanizador apontar. */
+  evitar: string[];
 }
 
 // ---------- Funções chamadas pela página ----------
@@ -85,11 +89,13 @@ function gerarReescritas(token: string): Reescritas {
 
   const agora = new Date();
   const versoes = versoesAtuais_(s.usuario_id);
+  const evitar = termosEvitar_(ficha.evitar);
   const textos: TextoReescrito[] = TIPOS_REESCRITA.map((t) => {
     const conteudo = r!.textos[t.tipo];
     return {
       tipo: t.tipo, nome: t.nome, conteudo, limite: REESCRITA.LIMITES[t.tipo],
       versao: (versoes[t.tipo] ?? 0) + 1, criadoEm: agora.toISOString(), aConfirmar: contarConfirmar_(conteudo),
+      avaliacao: avaliarTextoPT_(conteudo, evitar),
     };
   });
   anexarLinhas_("Textos", textos.map((t) => ({
@@ -97,7 +103,7 @@ function gerarReescritas(token: string): Reescritas {
     limite_caracteres: t.limite, versao: t.versao, editado_pelo_usuario: false, criado_em: agora,
   })));
   registrarLog_(s.usuario_id, "perfil_reescrito",
-    textos.map((t) => `${t.tipo.replace("linkedin_", "")} ${t.conteudo.length}c${t.aConfirmar ? ` ${t.aConfirmar}[C]` : ""}`).join(", "));
+    textos.map((t) => `${t.tipo.replace("linkedin_", "")} ${t.conteudo.length}c ${t.avaliacao.nota}${t.aConfirmar ? ` ${t.aConfirmar}[C]` : ""}`).join(", "));
   return { textos, conferir: r.conferir };
 }
 
@@ -115,6 +121,7 @@ function ultimasReescritas(token: string): Reescritas {
     if (!atual || Number(l[c("versao")]) >= Number(atual[c("versao")])) ultimas[tipo] = l;
   }
   const textos: TextoReescrito[] = [];
+  const evitar = termosEvitar_(fichaParaReescrita_(s.usuario_id).evitar);
   for (const t of TIPOS_REESCRITA) {
     const l = ultimas[t.tipo];
     if (!l) continue;
@@ -123,6 +130,7 @@ function ultimasReescritas(token: string): Reescritas {
     textos.push({
       tipo: t.tipo, nome: t.nome, conteudo, limite: REESCRITA.LIMITES[t.tipo], versao: Number(l[c("versao")]) || 1,
       criadoEm: criado instanceof Date ? criado.toISOString() : String(criado), aConfirmar: contarConfirmar_(conteudo),
+      avaliacao: avaliarTextoPT_(conteudo, evitar),
     });
   }
   return { textos, conferir: [] };
@@ -134,7 +142,7 @@ function ultimasReescritas(token: string): Reescritas {
 function fichaParaReescrita_(usuarioId: string): FichaReescrita {
   const { cab, linhas } = lerAba_("Fichas");
   const c = (n: string) => coluna_(cab, n);
-  const saida: FichaReescrita = { fatos: [], tom: [], proibidos: [] };
+  const saida: FichaReescrita = { fatos: [], tom: [], proibidos: [], evitar: [] };
   // Proibidos têm limite próprio: nunca são cortados para caber fatos ou tom.
   let total = 0;
   let totalProibidos = 0;
@@ -153,7 +161,10 @@ function fichaParaReescrita_(usuarioId: string): FichaReescrita {
     }
     if (status !== "confirmado" || total + linha.length > REESCRITA.MAX_FICHA) continue;
     if (SECOES_FATOS.includes(secao)) saida.fatos.push(linha);
-    else if (SECOES_TOM.includes(secao)) saida.tom.push(linha);
+    else if (SECOES_TOM.includes(secao)) {
+      saida.tom.push(linha);
+      if (secao === "palavras_evita") saida.evitar.push(texto);
+    }
     else continue;
     total += linha.length;
   }
@@ -228,37 +239,15 @@ function validarReescrita_(r: unknown): { textos: Record<string, string>; confer
   for (const t of TIPOS_REESCRITA) {
     const v = o[t.campo];
     if (typeof v !== "string") return null;
-    const limpo = limparTextoGerado_(v, t.tipo === "linkedin_titulo");
+    const limpo = limparTextoPT_(v, t.tipo === "linkedin_titulo");
     if (!limpo || limpo.length > REESCRITA.LIMITES[t.tipo]) return null;
     textos[t.tipo] = limpo;
   }
   const conferir = (Array.isArray(o.conferir) ? o.conferir : [])
-    .map((x) => limparTextoGerado_(String(x ?? ""), true).slice(0, 300))
+    .map((x) => limparTextoPT_(String(x ?? ""), true).slice(0, 300))
     .filter((x) => x)
     .slice(0, REESCRITA.MAX_NOTAS);
   return { textos, conferir };
-}
-
-/**
- * Tira marcas de texto gerado: caracteres invisíveis, travessão, aspas curvas, reticências
- * de um caractere. Mantém as quebras de linha (o Sobre depende delas), salvo em `umaLinha`.
- */
-function limparTextoGerado_(v: string, umaLinha: boolean): string {
-  let t = v
-    .replace(/[​-‏⁠-⁤﻿­]/g, "")
-    .replace(/[   ]/g, " ")
-    .replace(/\s*—\s*/g, ", ")
-    .replace(/–/g, "-")
-    .replace(/[“”„]/g, "\"")
-    .replace(/[‘’]/g, "'")
-    .replace(/…/g, "...")
-    .replace(/\r\n?/g, "\n")
-    .replace(/,\s*([,.;:!?])/g, "$1")
-    .replace(/^,\s*/gm, "");
-  t = umaLinha
-    ? t.replace(/\s+/g, " ")
-    : t.split("\n").map((l) => l.replace(/[ \t]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n");
-  return t.trim();
 }
 
 function contarConfirmar_(t: string): number {
