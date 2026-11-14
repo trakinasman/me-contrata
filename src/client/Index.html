@@ -436,6 +436,23 @@
       setTimeout(function () { aviso.textContent = ""; }, 3000);
     }
 
+    // Naturalidade (E4-05): nota de 0 a 100, sinais para revisar e o detalhe das cinco checagens.
+    var VEREDITO = { "passa": "ok", "revisar": "warn", "parece IA": "bad" };
+    function desenharNaturalidade(a) {
+      if (!a) return null;
+      return h("div", { class: "stack naturalidade" },
+        h("div", { class: "row" },
+          h("span", { class: "chip " + (VEREDITO[a.veredito] || "") }, "Naturalidade " + Math.round(a.nota) + " · " + a.veredito),
+          a.sinais.length ? h("span", { class: "small muted" }, a.sinais.length === 1 ? "1 ponto para revisar" : a.sinais.length + " pontos para revisar") : null),
+        a.sinais.length ? h("ul", { class: "small sinais" }, a.sinais.map(function (s) {
+          return h("li", {}, h("b", {}, s.nome + (s.qtd > 1 ? " (" + s.qtd + "x)" : "")), ": " + s.dica);
+        })) : null,
+        h("details", { class: "small muted" },
+          h("summary", {}, "Como a nota é calculada"),
+          h("ul", {}, a.checagens.map(function (c) { return h("li", {}, c.nome + ": " + Math.round(c.nota) + " (" + c.detalhe + ")"); })),
+          h("p", {}, "Heurísticas locais, no espírito dos detectores de texto de IA. Não são esses detectores e não garantem o resultado deles.")));
+    }
+
     function desenharReescritas(r) {
       if (!r || !r.textos.length) {
         el("resultado-reescrita").replaceChildren(h("p", { class: "muted small" }, "Nenhuma reescrita ainda."));
@@ -452,6 +469,7 @@
             h("span", {}, t.aConfirmar ? h("span", { class: "chip warn" }, t.aConfirmar + " a confirmar") : null, " ",
               h("span", { class: "small muted" }, tamanho))),
           h("div", { class: "texto-gerado" }, comMarcas(t.conteudo)),
+          desenharNaturalidade(t.avaliacao),
           h("div", { class: "row" },
             h("button", { class: "btn mini", type: "button", onclick: function () { copiar(t.conteudo, aviso); } }, "Copiar"),
             aviso)));

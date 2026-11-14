@@ -11,6 +11,7 @@ Assistente web para candidatos a vagas: ficha do candidato, nota do perfil, adap
 ## Comandos
 - `npm run build`: limpa e gera `dist/`
 - `npm run typecheck`: checa tipos sem gerar arquivos
+- `npm test`: build + testes em `tests/` (Apps Script simulado no Node, sem rede). Rodar antes de `push`/`deploy`; cada entrega nova ganha um `tests/<parte>.test.js`
 - `npm run push`: build + `clasp push`
 - `npm run deploy`: push + nova versão na implantação publicada (a URL `/exec` não muda)
 - `npm run deploy:nova`: push + implantação nova, com URL nova (só para um ambiente novo; depois troque o ID no script `deploy`)
@@ -19,6 +20,7 @@ Assistente web para candidatos a vagas: ficha do candidato, nota do perfil, adap
 ## Regras do código
 - Os arquivos `.ts` são scripts globais (sem `import`/`export`): o Apps Script junta tudo num escopo só. Nomes de funções e constantes precisam ser únicos entre os arquivos.
 - Não usar atribuição lógica (`??=`, `||=`, `&&=`): o `tsc` (alvo ES2022) não converte esses operadores e o `clasp push` falha com `ParseError` no Apps Script.
+- Caracteres especiais (invisíveis, U+2028, travessão, aspas curvas) só como escape `\uXXXX` no código, nunca literais: o U+2028 literal dentro de uma regex quebra o JavaScript gerado. Em regex com texto em português, use `rePT_` (`Humanizar.ts`): o `\b` do JavaScript não reconhece letra acentuada.
 - Toda função global sem `_` no final pode ser chamada pela página via `google.script.run`. Helpers internos terminam em `_` (`prop_`, `planilha_`, `incluir_`...). Funções públicas são só as que a página precisa chamar, e cada uma valida a sessão. Funções administrativas que precisam aparecer no editor (como `setupAmbiente`) começam com `exigirDono_()`.
 - `doGet` e `doPost` são as únicas entradas sem sessão: `doPost` (`Agente.ts`) só aceita envio assinado com o segredo do agente (HMAC, janela de tempo e nonce de uso único).
 - Segredos (chave da API, segredo do agente) só nas Propriedades do Script, nunca no código, no Git ou em `appsscript.json`.
