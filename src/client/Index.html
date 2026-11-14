@@ -229,7 +229,7 @@
     function salvarToken(t) { tokenAtual = t; try { localStorage.setItem(CHAVE, t); } catch (e) {} }
     // Sem sessão, nada do usuário anterior pode continuar na memória da página.
     function apagarToken() {
-      tokenAtual = null; ficha = null; editando = null; curriculos = null; vagas = null; descartando = null;
+      tokenAtual = null; ficha = null; editando = null; curriculos = null; vagas = null; descartando = null; descricaoAberta = null; descricoes = {};
       try { localStorage.removeItem(CHAVE); } catch (e) {}
     }
 
@@ -353,11 +353,15 @@
               v.selecionadaEm ? "fora da busca " + haQuantosDias(v.selecionadaEm) : "fora da busca"),
             h("span", { class: "chip " + classe, title: "Nota pelas suas preferências e listas" }, v.nota == null ? "sem nota" : "nota " + v.nota))),
         v.motivos.length ? h("div", { class: "small muted" }, "Por quê: " + v.motivos.join(" · ")) : null,
-        descartando === v.vagaId ? formDescarte(v) : acoesVaga(v));
+        descartando === v.vagaId ? formDescarte(v) : acoesVaga(v),
+        descricaoAberta === v.vagaId ? painelDescricao(v) : null);
     }
 
     function acoesVaga(v) {
+      var aberta = descricaoAberta === v.vagaId;
       return h("div", { class: "row" },
+        h("button", { class: "btn mini", type: "button", "aria-expanded": aberta ? "true" : "false", onclick: function () { alternarDescricao(v); } },
+          aberta ? "Fechar descrição" : "Descrição"),
         h("button", { class: "btn mini", type: "button", disabled: true, title: "Chega com a adaptação de textos por vaga (E5-03)" }, "Adaptar (em breve)"),
         v.noFunil ? h("span", { class: "chip ok" }, "no funil") :
           h("button", { class: "btn mini", type: "button", onclick: function (ev) { moverVaga(v, ev.target); } }, "Mover para o funil"),
@@ -401,6 +405,88 @@
         }
       }, h("p", { class: "small" }, "Por que descartar? A vaga some da lista e o agente não a traz de novo."),
         motivo, detalhe, erro, h("div", { class: "row" }, confirmar, cancelar));
+    }
+
+    // ---------- Descrição da vaga (E5-02) ----------
+    // O texto vem do anúncio ou é colado pelo candidato: entra por textContent, nunca por innerHTML.
+    var descricaoAberta = null;  // vaga com o painel de descrição aberto
+    var descricoes = {};         // vagaId -> { estado: "carregando" | "ok" | "colar", d, erro, lendo, colando }
+    var MIN_DESCRICAO = 200, MAX_DESCRICAO = 30000;
+
+    function alternarDescricao(v) {
+      if (descricaoAberta === v.vagaId) { descricaoAberta = null; desenharVagas(); return; }
+      descricaoAberta = v.vagaId;
+      if (!descricoes[v.vagaId] || descricoes[v.vagaId].estado === "colar") carregarDescricao(v);
+      desenharVagas();
+    }
+
+    // Primeiro a descrição salva; se não houver, tenta ler o anúncio.
+    function carregarDescricao(v) {
+      descricoes[v.vagaId] = { estado: "carregando" };
+      chamar("descricaoVaga", [tokenAtual, v.vagaId], function (d) {
+        if (d) { descricoes[v.vagaId] = { estado: "ok", d: d }; desenharVagas(); return; }
+        lerDoAnuncio(v);
+      }, function (msg) { descricoes[v.vagaId] = { estado: "colar", erro: msg }; desenharVagas(); });
+    }
+
+    function lerDoAnuncio(v) {
+      var anterior = descricoes[v.vagaId] && descricoes[v.vagaId].d;
+      descricoes[v.vagaId] = { estado: "carregando", lendo: true, d: anterior };
+      desenharVagas();
+      chamar("lerDescricaoDoAnuncio", [tokenAtual, v.vagaId], function (d) {
+        descricoes[v.vagaId] = { estado: "ok", d: d };
+        desenharVagas();
+      }, function (msg) {
+        descricoes[v.vagaId] = anterior ? { estado: "ok", d: anterior, aviso: msg } : { estado: "colar", erro: msg };
+        desenharVagas();
+      });
+    }
+
+    function painelDescricao(v) {
+      var e = descricoes[v.vagaId] || { estado: "carregando" };
+      if (e.estado === "carregando") {
+        return h("div", { class: "painel-descricao" }, h("p", { class: "small muted" }, e.lendo ? "Lendo o anúncio…" : "Carregando a descrição…"));
+      }
+      if (e.estado === "ok" && !e.colando) {
+        var quando = new Date(e.d.obtidaEm);
+        var data = isNaN(quando) ? "" : " em " + quando.toLocaleDateString("pt-BR");
+        return h("div", { class: "stack painel-descricao" },
+          h("p", { class: "small muted" }, (e.d.origem === "colada" ? "Colada por você" : "Lida do anúncio") + data + " · " + e.d.texto.length + " caracteres"),
+          e.aviso ? h("p", { class: "erro" }, e.aviso) : null,
+          h("div", { class: "texto-gerado descricao-vaga" }, e.d.texto),
+          h("div", { class: "row" },
+            v.link ? h("button", { class: "btn mini", type: "button", onclick: function () { lerDoAnuncio(v); } }, "Ler de novo do anúncio") : null,
+            h("button", { class: "btn mini", type: "button", onclick: function () { e.colando = true; desenharVagas(); } }, "Colar outro texto")));
+      }
+      return formColarDescricao(v, e);
+    }
+
+    function formColarDescricao(v, e) {
+      var texto = h("textarea", { rows: "8", maxlength: String(MAX_DESCRICAO), "aria-label": "Descrição da vaga", placeholder: "Cole aqui a descrição completa da vaga" });
+      var conta = h("span", { class: "small muted" }, "0 caracteres");
+      texto.addEventListener("input", function () { conta.textContent = texto.value.length + " caracteres"; });
+      var erro = h("p", { class: "erro", role: "alert" });
+      var salvar = h("button", { class: "btn mini prim", type: "submit" }, "Salvar descrição");
+      var cancelar = e.d ? h("button", { class: "btn mini", type: "button", onclick: function () { e.colando = false; desenharVagas(); } }, "Cancelar") : null;
+      return h("form", {
+        class: "stack painel-descricao", novalidate: true,
+        onsubmit: function (ev) {
+          ev.preventDefault();
+          if (texto.value.trim().length < MIN_DESCRICAO) { erro.textContent = "Cole a descrição completa (pelo menos " + MIN_DESCRICAO + " caracteres)."; return; }
+          [texto, salvar].concat(cancelar ? [cancelar] : []).forEach(function (x) { x.disabled = true; });
+          chamar("colarDescricao", [tokenAtual, v.vagaId, texto.value], function (d) {
+            descricoes[v.vagaId] = { estado: "ok", d: d };
+            desenharVagas();
+            avisarVagas("Descrição salva.");
+          }, function (msg) {
+            [texto, salvar].concat(cancelar ? [cancelar] : []).forEach(function (x) { x.disabled = false; });
+            erro.textContent = msg;
+          });
+        }
+      },
+        e.erro ? h("p", { class: "small" }, e.erro) : h("p", { class: "small muted" }, "Cole a descrição completa do anúncio. Ela vale mais que a lida automaticamente."),
+        v.link ? h("p", { class: "small" }, h("a", { href: v.link, target: "_blank", rel: "noopener noreferrer" }, "Abrir o anúncio em outra aba")) : null,
+        texto, h("div", { class: "row entre" }, erro, conta), h("div", { class: "row" }, salvar, cancelar));
     }
 
     var timerVagas = null;

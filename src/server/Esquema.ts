@@ -29,6 +29,9 @@ const ESQUEMA: Record<string, string[]> = {
   // uma linha por acontecimento, com a data. "Selecionada pelo agente" não entra aqui: a data
   // está em VagasCandidato.vista_em.
   Eventos: ["evento_id", "usuario_id", "vaga_id", "tipo", "detalhe", "em"],
+  // Descricoes (E5-02): texto da vaga. Lida do anúncio = pública, sem usuario_id, uma por vaga.
+  // Colada pelo candidato = com usuario_id (sai na exclusão de dados) e vale mais que a do anúncio.
+  Descricoes: ["vaga_id", "usuario_id", "origem", "texto", "obtida_em"],
   Textos: ["texto_id", "usuario_id", "vaga_id", "tipo", "conteudo", "limite_caracteres", "versao", "editado_pelo_usuario", "criado_em"],
   Recomendacoes: ["usuario_id", "pessoa", "relacao", "angulo", "status", "pedido_em", "recebida_em"],
   Rubricas: ["rubrica_id", "versao", "item", "pontos", "criterio"],

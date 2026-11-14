@@ -22,7 +22,8 @@ module.exports = function () {
   r.ok(limpar("linha junta") === "linhajunta", "separador de linha U+2028 sai");
   r.ok(limpar("um\n\n\n\ndois\n• item") === "um\n\ndois\n- item", "linhas em branco repetidas e marcador de lista");
   r.ok(limpar("quebra\nde linha", true) === "quebra de linha", "título: vira uma linha só");
-  r.ok(limpar("veja https://exemplo.com/a—b e mail@x.com.br") === "veja https://exemplo.com/a—b e mail@x.com.br", "URL e e-mail ficam intactos");
+  r.ok(limpar("veja https://exemplo.com/a-b_c?x=1&y=2 e mail.nome+tag@x.com.br") === "veja https://exemplo.com/a-b_c?x=1&y=2 e mail.nome+tag@x.com.br", "URL e e-mail ficam intactos");
+  r.ok(limpar("=LINK(\"https://x.com/a\")— fim") === "=LINK(\"https://x.com/a\"), fim", "travessão logo depois de um link é limpo (o link para em aspas e parênteses)");
   r.ok(limpar("fim —.") === "fim.", "vírgula antes de pontuação some");
 
   // Calibração: à mão passa, com cara de IA não.

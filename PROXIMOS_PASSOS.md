@@ -14,7 +14,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
 | 4 — Perfil | Concluída | E4-01 a E4-06 concluídas e publicadas (E4-06 na versão @21, 14/11/2026). Nota do Roberto: 46 parcial para 76, completa |
-| 5 — Vagas | **Em andamento** | E5-01 (lista de vagas) implementada em 14/11/2026, falta publicar. E5-03 depende da skill `li-candidatura` (E7-01, achado D7) |
+| 5 — Vagas | **Em andamento** | E5-01 publicada (@22 e @23). E5-02 (descrição da vaga) implementada em 14/11/2026, falta publicar. E5-03 depende da skill `li-candidatura` (E7-01, achado D7) |
 | 6 a 8 — Funil, skill, piloto | A fazer | Ordem do plano; a E7-01 sobe para antes da E5-03 |
 
 ## Etapa 2 — Ficha do candidato
@@ -223,6 +223,16 @@ Do plano do piloto (doc no claude.ai):
 - Aba nova `Eventos` (`evento_id, usuario_id, vaga_id, tipo, detalhe, em`): uma linha por acontecimento, com a data. Já gravam: inserida no funil e descartada (com o motivo). A data de "selecionada pelo agente" vem de `VagasCandidato.vista_em`, sem mexer no agente. Entra na exclusão de dados (LGPD) por ter `usuario_id`.
 - Etapa 6: mudar de etapa grava um evento; tela com a linha do tempo de cada vaga e os números do funil (tempo médio entre etapas, quantas passam de uma etapa para a outra, em que etapa as recusas acontecem, de onde vêm as vagas que avançam).
 - Depois de publicar, rodar `setupAmbiente()`: cria a aba `Eventos` e atualiza a validação de `Candidaturas.status`.
+- Publicada nas versões @22 (lista, motivos, etapas e eventos) e @23 (etiquetas).
+
+**E5-02 implementada (14/11/2026).** `src/server/Descricoes.ts` (`descricaoVaga`, `lerDescricaoDoAnuncio`, `colarDescricao`) e o botão "Descrição" em cada vaga:
+- Onde está o texto, conferido em páginas reais em 14/11/2026: **Gupy** nos dados da página (`__NEXT_DATA__`: `description`, `responsibilities`, `prerequisites`, `relevantExperiences`, montados com os títulos Sobre a vaga, Responsabilidades, Requisitos e Informações adicionais); **Sólides** e **InfoJobs** no formato padrão de vaga (JSON-LD `JobPosting`). **InHire** monta a página no navegador e a **Catho** recusa robôs (HTTP 403): nesses o candidato cola o texto. Resultado nas páginas reais: Gupy 7.104 e 3.708 caracteres, Sólides 2.385, InfoJobs 1.736.
+- Aba nova `Descricoes` (`vaga_id, usuario_id, origem, texto, obtida_em`). A lida do anúncio é pública como o catálogo: uma linha por vaga, sem `usuario_id`, lida uma vez para todos os candidatos. A colada é de quem colou (com `usuario_id`, sai na exclusão de dados) e vale mais que a do anúncio.
+- Na página: a primeira abertura tenta ler o anúncio; se não der, pede para colar, com link para abrir o anúncio. Depois: "Ler de novo do anúncio" e "Colar outro texto".
+- Limites: só link https do catálogo; 30 leituras de anúncio por dia por candidato; texto de 200 a 30.000 caracteres. O HTML vira texto (lista com hífen, entidades decodificadas, quebra crua do HTML vale espaço) e passa pela `limparTextoPT_`. O texto do anúncio é dado: entra por `textContent` e, na E5-03, vai para a IA dentro de tags.
+- Achado no caminho: a proteção de links da `limparTextoPT_` (E4-05) pegava como parte do link tudo até o próximo espaço (aspas, parênteses, travessão). Agora o link para nesses caracteres e o e-mail segue o formato usual.
+- Testes: `tests/descricoes.test.js` com páginas sintéticas no formato de cada fonte (as reais não vão para o repositório); 174 casos no total.
+- Depois de publicar, rodar `setupAmbiente()`: cria a aba `Descricoes`.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
