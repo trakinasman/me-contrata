@@ -25,6 +25,10 @@ const ESQUEMA: Record<string, string[]> = {
   Vagas: ["vaga_id", "fonte", "fonte_id", "empresa", "titulo", "link", "local", "modalidade", "publicada_em", "coletada_em", "vista_por_ultimo_em"],
   VagasCandidato: ["usuario_id", "vaga_id", "nota_regras", "motivos", "nota_ia", "descartada", "motivo_descarte", "vista_em", "selecionada_em"],
   Candidaturas: ["usuario_id", "vaga_id", "status", "canal", "cv_usado", "enviado_em", "proxima_cobranca", "obs", "atualizado_em"],
+  // Eventos: linha do tempo de cada vaga do candidato (inserida no funil, cada etapa, descarte),
+  // uma linha por acontecimento, com a data. "Selecionada pelo agente" não entra aqui: a data
+  // está em VagasCandidato.vista_em.
+  Eventos: ["evento_id", "usuario_id", "vaga_id", "tipo", "detalhe", "em"],
   Textos: ["texto_id", "usuario_id", "vaga_id", "tipo", "conteudo", "limite_caracteres", "versao", "editado_pelo_usuario", "criado_em"],
   Recomendacoes: ["usuario_id", "pessoa", "relacao", "angulo", "status", "pedido_em", "recebida_em"],
   Rubricas: ["rubrica_id", "versao", "item", "pontos", "criterio"],
@@ -37,7 +41,10 @@ const ESQUEMA: Record<string, string[]> = {
 const LISTAS: Record<string, string[]> = {
   papel: ["candidato", "admin"],
   status_ficha: ["confirmado", "a_confirmar", "proibido"],
-  status_candidatura: ["nao_enviado", "enviado", "aguardando", "entrevista", "recusado", "descartado"],
+  // Etapas do funil, na ordem (decididas pelo Roberto em 14/11/2026). Recusado e desisti podem
+  // vir de qualquer etapa. "Aguardando" não é etapa: é o tempo parado desde o último evento.
+  status_candidatura: ["inserida", "curriculo_enviado", "entrevista_ia", "entrevista_rh", "entrevista_gestor", "proposta", "contratado", "recusado", "desisti"],
+  tipo_evento: ["inserida", "curriculo_enviado", "entrevista_ia", "entrevista_rh", "entrevista_gestor", "proposta", "contratado", "recusado", "desisti", "descartada"],
   status_recomendacao: ["pedido", "recebida", "aprovada"],
   tipo_curriculo: ["base", "linkedin", "adaptado"],
   modalidade: ["remoto", "hibrido", "presencial"],
@@ -56,6 +63,7 @@ const VALIDACOES: Record<string, Record<string, string>> = {
   Curriculos: { tipo: "tipo_curriculo" },
   Vagas: { modalidade: "modalidade" },
   Candidaturas: { status: "status_candidatura" },
+  Eventos: { tipo: "tipo_evento" },
   Recomendacoes: { status: "status_recomendacao" },
 };
 

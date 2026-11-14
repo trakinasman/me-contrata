@@ -11,7 +11,9 @@
  *   cria a linha; não é "vista pelo candidato").
  * - Descartar pede um motivo e esconde a vaga para sempre: o agente já não recria vaga
  *   descartada e não atualiza a nota dela (E3-05).
- * - Mover para o funil cria a candidatura com status nao_enviado (a tela do funil é a Etapa 6).
+ * - Mover para o funil cria a candidatura na etapa "inserida" (a tela do funil é a Etapa 6).
+ * - Inserir no funil e descartar gravam um evento com a data na aba Eventos: é a base da
+ *   linha do tempo de cada vaga.
  */
 
 const VAGAS_TELA = { DIAS_VIGENTE: 7, DIAS_NOVA: 3, MAX_DETALHE: 200 } as const;
@@ -75,6 +77,7 @@ function descartarVaga(token: string, vagaId: unknown, motivo: unknown, detalhe:
     if (verdadeiro_(linhas[i][c("descartada")])) throw new Error("Esta vaga já foi descartada.");
     aba.getRange(i + 2, c("descartada") + 1).setValue(true);
     aba.getRange(i + 2, c("motivo_descarte") + 1).setValue(celulaTexto_(texto));
+    registrarEvento_(s.usuario_id, String(linhas[i][c("vaga_id")]).trim(), "descartada", texto);
     registrarLog_(s.usuario_id, "vaga_descartada", `${String(vagaId)}: ${m}`);
   } finally {
     lock.releaseLock();
@@ -97,7 +100,8 @@ function moverParaFunil(token: string, vagaId: unknown): { noFunil: boolean } {
     const cc = (n: string) => coluna_(cand.cab, n);
     const jaTem = cand.linhas.some((l) => String(l[cc("usuario_id")]).trim() === s.usuario_id && String(l[cc("vaga_id")]).trim() === id);
     if (!jaTem) {
-      anexarLinha_("Candidaturas", { usuario_id: s.usuario_id, vaga_id: id, status: "nao_enviado", atualizado_em: new Date() });
+      anexarLinha_("Candidaturas", { usuario_id: s.usuario_id, vaga_id: id, status: "inserida", atualizado_em: new Date() });
+      registrarEvento_(s.usuario_id, id, "inserida", "");
       registrarLog_(s.usuario_id, "vaga_no_funil", id);
     }
   } finally {
@@ -107,6 +111,14 @@ function moverParaFunil(token: string, vagaId: unknown): { noFunil: boolean } {
 }
 
 // ---------- Uso interno ----------
+
+/** Um acontecimento na linha do tempo da vaga (aba Eventos). */
+function registrarEvento_(usuarioId: string, vagaId: string, tipo: string, detalhe: string): void {
+  if (!LISTAS.tipo_evento.includes(tipo)) throw new Error("Tipo de evento inválido: " + tipo);
+  anexarLinha_("Eventos", {
+    evento_id: Utilities.getUuid(), usuario_id: usuarioId, vaga_id: vagaId, tipo, detalhe, em: new Date(),
+  });
+}
 
 /** Índice (em `linhas`) da vaga do usuário. Erro se não existir ou for de outra pessoa. */
 function linhaVagaDoUsuario_(linhas: unknown[][], c: (n: string) => number, usuarioId: string, vagaId: unknown): number {

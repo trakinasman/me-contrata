@@ -1,10 +1,10 @@
 // Lista de vagas (E5-01): vigentes e antigas, filtros de UF, descarte com motivo, funil e isolamento.
 "use strict";
-const { criarAmbiente, novoRelatorio } = require("./simulador");
+const { criarAmbiente, novoRelatorio, ehData } = require("./simulador");
 
 module.exports = function () {
   const r = novoRelatorio("Vagas (E5-01)");
-  const { ctx, abas, usuario } = criarAmbiente();
+  const { ctx, g, abas, usuario } = criarAmbiente();
   const A = usuario("usr-A");
   const B = usuario("usr-B");
   const dia = 24 * 3600e3;
@@ -62,6 +62,8 @@ module.exports = function () {
   r.ok(!por(l)["gupy:3"] && l.descartadas === 1, "descartada some da lista e entra na contagem");
   r.erro(() => ctx.descartarVaga(A, "gupy:3", "Outro", "de novo"), /já foi descartada/, "não descarta duas vezes");
   r.ok(abas.Log.d.some((x) => x[2] === "vaga_descartada" && /gupy:3: Outro/.test(x[3])), "Log registra o descarte");
+  const evd = abas.Eventos.d.find((x) => x[1] === "usr-A" && x[2] === "gupy:3");
+  r.ok(evd && evd[3] === "descartada" && /^Outro: /.test(evd[4]) && ehData(evd[5]), "descarte vira evento com o motivo e a data");
   ctx.descartarVaga(A, "gupy:2", "Local ou modalidade", "");
   r.ok(abas.VagasCandidato.d.find((x) => x[1] === "gupy:2")[6] === "Local ou modalidade", "motivo sem detalhe");
 
@@ -70,9 +72,13 @@ module.exports = function () {
   ctx.moverParaFunil(A, "gupy:1");
   ctx.moverParaFunil(A, "gupy:1");
   const cand = abas.Candidaturas.d.filter((x) => x[0] === "usr-A");
-  r.ok(cand.length === 1 && cand[0][1] === "gupy:1" && cand[0][2] === "nao_enviado", "mover cria uma candidatura não enviada, sem duplicar");
+  r.ok(cand.length === 1 && cand[0][1] === "gupy:1" && cand[0][2] === "inserida", "mover cria a candidatura na etapa inserida, sem duplicar");
+  const ev = (u, id) => abas.Eventos.d.filter((x) => x[1] === u && x[2] === id);
+  r.ok(ev("usr-A", "gupy:1").length === 1 && ev("usr-A", "gupy:1")[0][3] === "inserida" && ehData(ev("usr-A", "gupy:1")[0][5]), "evento \"inserida\" com data, uma vez só");
   r.ok(por(ctx.listarVagas(A))["gupy:1"].noFunil && !por(ctx.listarVagas(A))["gupy:4"].noFunil, "lista marca a vaga que está no funil");
   r.ok(!ctx.listarVagas(B).vagas[0].noFunil, "a candidatura de A não aparece para B");
+  r.ok(abas.Eventos.d.slice(1).every((x) => x[1] === "usr-A"), "eventos só do usuário que agiu");
+  r.ok(g("LISTAS.status_candidatura").join(",") === "inserida,curriculo_enviado,entrevista_ia,entrevista_rh,entrevista_gestor,proposta,contratado,recusado,desisti", "etapas do funil na ordem decidida");
   r.erro(() => ctx.moverParaFunil(A, ""), /não encontrada/, "vaga vazia recusada");
 
   return r;

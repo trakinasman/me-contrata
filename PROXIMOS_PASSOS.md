@@ -211,10 +211,17 @@ Do plano do piloto (doc no claude.ai):
 - **Decidido nesta entrega (a confirmar):** vigente = selecionada pelo agente nos últimos **7 dias** (a janela que a E3-05 deixou para a Etapa 5); as outras ficam escondidas, com uma caixa para mostrar. Nova = linha criada nos últimos 3 dias (`vista_em` é a data de criação pelo agente, não "vista pelo candidato").
 - Filtros de fonte, modalidade e UF. A UF sai do `local` ("Cidade/UF", "Cidade - UF" ou a sigla); muitos anúncios só trazem a cidade ou "BR", e esses ficam em "Sem UF no anúncio".
 - Descartar pede um motivo de uma lista e esconde a vaga para sempre. Motivos, decididos pelo Roberto em 14/11/2026: salário ou forma de contratação (CLT/PJ), local ou modalidade, requisitos ou nível da vaga, empresa, e "Outro" com detalhe. Esconde para sempre: não há restaurar, como pede o critério; o agente já não recria nem atualiza vaga descartada. O motivo ainda não muda as notas seguintes (o protótipo sugeria isso; fica para depois).
-- Mover para o funil cria a candidatura como `nao_enviado` na aba `Candidaturas`, sem duplicar; a tela do funil é a Etapa 6.
+- Mover para o funil cria a candidatura na etapa `inserida` na aba `Candidaturas`, sem duplicar; a tela do funil é a Etapa 6.
 - Adaptar aparece desativado até a E5-03, que depende da E7-01.
 - Link do anúncio abre em outra aba e só se for https. Título, empresa e motivos entram por `textContent`.
-- Testes: `tests/vagas.test.js`, 28 casos (vigência, ordem, UF, isolamento, descarte com motivo, funil sem duplicar); 137 no total.
+- Testes: `tests/vagas.test.js` (vigência, ordem, UF, isolamento, descarte com motivo, funil sem duplicar, eventos); 142 no total.
+
+**Etapas do funil e linha do tempo (decidido pelo Roberto em 14/11/2026; base nesta entrega, tela na Etapa 6).**
+- Etapas, na ordem: **inserida → currículo enviado → entrevista com IA → entrevista com RH → entrevista com gestor → proposta → contratado**. **Recusado** (pela empresa) e **desisti** (pelo candidato) podem vir de qualquer etapa e guardam onde a vaga parou. Dá para pular etapas (nem todo processo tem entrevista com IA). Substituem os status antigos (`nao_enviado`, `enviado`, `aguardando`, `entrevista`, `recusado`, `descartado`); a aba `Candidaturas` estava vazia, nada a migrar.
+- "Aguardando" não é etapa: é o tempo parado desde o último evento (alerta e cobrança, E5-06).
+- Aba nova `Eventos` (`evento_id, usuario_id, vaga_id, tipo, detalhe, em`): uma linha por acontecimento, com a data. Já gravam: inserida no funil e descartada (com o motivo). A data de "selecionada pelo agente" vem de `VagasCandidato.vista_em`, sem mexer no agente. Entra na exclusão de dados (LGPD) por ter `usuario_id`.
+- Etapa 6: mudar de etapa grava um evento; tela com a linha do tempo de cada vaga e os números do funil (tempo médio entre etapas, quantas passam de uma etapa para a outra, em que etapa as recusas acontecem, de onde vêm as vagas que avançam).
+- Depois de publicar, rodar `setupAmbiente()`: cria a aba `Eventos` e atualiza a validação de `Candidaturas.status`.
 
 **Registro de 11/11/2026:**
 - O primeiro `npm run push` falhou com `ParseError: Unexpected token =` porque o parser do Apps Script não aceita atribuição lógica (`??=`, `||=`, `&&=`), e o `tsc` com alvo ES2022 não converte esses operadores. A regra foi para o `CLAUDE.md`.
