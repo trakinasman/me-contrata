@@ -156,9 +156,10 @@ function desvioPadrao_(v: number[]): number {
 
 /**
  * Avalia o quanto o texto soa natural. `evitar` são termos que o candidato não quer nos
- * textos (seção Palavras que evito da ficha).
+ * textos (seção Palavras que evito da ficha). `semConcretude`: texto de preferência, que por regra
+ * não leva número nem prova ("O que espera da empresa"): a Concretude fica neutra.
  */
-function avaliarTextoPT_(texto: string, evitar: string[] = []): AvaliacaoPT {
+function avaliarTextoPT_(texto: string, evitar: string[] = [], semConcretude = false): AvaliacaoPT {
   const t = String(texto ?? "");
   const pal = palavrasPT_(t);
   const por100 = pal.length ? 100 / pal.length : 0;
@@ -177,7 +178,9 @@ function avaliarTextoPT_(texto: string, evitar: string[] = []): AvaliacaoPT {
   }
 
   // 2. Concretude: números e nomes próprios fora do começo da frase.
-  if (pal.length < 25) {
+  if (semConcretude) {
+    checagens.push({ id: "concretude", nome: "Concretude", nota: 50, detalhe: "não se aplica: texto de preferência, sem número nem prova", neutra: true });
+  } else if (pal.length < 25) {
     checagens.push({ id: "concretude", nome: "Concretude", nota: 50, detalhe: "texto curto demais para julgar", neutra: true });
   } else {
     const numeros = (t.match(/\b\d[\d.,]*%?|R\$\s?\d/g) || []).length;
