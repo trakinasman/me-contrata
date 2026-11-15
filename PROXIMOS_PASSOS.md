@@ -16,7 +16,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 4 — Perfil | Concluída | E4-01 a E4-06 concluídas e publicadas (E4-06 na versão @21, 14/11/2026). Nota do Roberto: 46 parcial para 76, completa |
 | 5 — Vagas | **Em andamento** | E5-01 publicada (@22 e @23). E5-02 (descrição da vaga) implementada em 14/11/2026, falta publicar. E5-03 depende da skill `li-candidatura` (E7-01, achado D7) |
 | 6 — Funil | A fazer | Etapas e aba Eventos já definidas (E5-01); falta a tela com a linha do tempo e os números |
-| 7 — Skill `li-candidatura` | **Em andamento** | E7-01 aprovada pelo Roberto em 14/11/2026 (`skills/li-candidatura/SKILL.md`). E7-02 (teste com Qive, Vetta e DOT Coordenação) em andamento. Sobe para antes da E5-03 (achado D7) |
+| 7 — Skill `li-candidatura` | **Em andamento** | E7-01 aprovada pelo Roberto em 14/11/2026 (`skills/li-candidatura/SKILL.md`). E7-02 concluída em 15/11/2026 (Qive, Vetta e Unetvale): nenhum fato inventado. Falta a E7-03, junto com a E5-03. Sobe para antes da E5-03 (achado D7) |
 | 8 — Piloto | A fazer | |
 
 ## Etapa 2 — Ficha do candidato
@@ -280,7 +280,9 @@ Perguntas a responder antes de integrar:
 | ID | Entrega | Critério de aceite | Depende de |
 |---|---|---|---|
 | E7-01 | `SKILL.md` com as regras: versão de currículo por tipo de vaga, 2 páginas, contagem de caracteres, primeira pessoa, `[CONFIRMAR]`, número exato em vez de derivado, nada que sinalize busca de emprego | Revisada e aprovada pelo Roberto | P0-04 |
-| E7-02 | Teste com 3 vagas já enviadas (Qive, Vetta, DOT Coordenação), comparando com o que foi feito à mão | Os revisores não acham fato inventado; diferenças anotadas | E7-01 |
+| E7-02 | Teste com 3 vagas já enviadas (Qive, Vetta, DOT Coordenação; a DOT saiu do ar e foi trocada pela Unetvale), comparando com o que foi feito à mão | Os revisores não acham fato inventado; diferenças anotadas | E7-01 |
 | E7-03 | O mesmo texto da skill vira o prompt de sistema de `adaptarParaVaga()` | Uma única fonte de regras para a página e para o Claude Code | E7-01, E5-03 |
 
 **E7-01 aprovada (14/11/2026).** `skills/li-candidatura/SKILL.md`, neste repositório (decisão do Roberto): o build vai embutir o texto no app (E7-03) e uma cópia fica em `~/.claude/skills/li-candidatura` para o Claude Code. Só regras, para qualquer candidato; os fatos vêm da ficha. Decisões do Roberto: o 6º texto é a carta de apresentação (o plano dizia "6 textos" e listava 5); na candidatura vale "não falar da saída do emprego atual" (nem motivo, nem falar mal de empregador; nada de disponibilidade, início imediato ou pretensão salarial salvo se pedido); requisito sem prova vira ponto a desenvolver ou `[CONFIRMAR]`; tamanhos padrão quando o formulário não tem limite (resumo 900, por que contratar 1.000, o que espera 600, ponto forte 250, ponto a desenvolver 300, carta 1.500 caracteres).
+
+**E7-02 concluída (15/11/2026).** Skill rodada em 3 vagas já enviadas: Qive, Vetta (descrição do Indeed) e Unetvale (Sólides), esta no lugar da DOT Coordenação, finalizada pela DOT em 13/11/2026. Resultado: nenhum fato inventado; os requisitos da vaga que a ficha não confirma viraram pontos a desenvolver com `[CONFIRMAR]`. Diferenças com os currículos feitos à mão (percentuais derivados, certificações, ferramentas e frases copiadas da vaga que não estão na ficha) estão no relatório pessoal do Roberto, fora do repositório. Achados para a E5-03: (1) a nota de naturalidade das listas (pontos fortes e a desenvolver) fica baixa pelo formato paralelo e não deve ser critério; (2) o "O que espera da empresa" precisa das Preferências do app, que hoje não entram na adaptação; (3) defeito da E4-05 corrigido: item da lista "evitar" com termos entre aspas vale só pelos termos (o "como" deixava de ser apontado em todo texto).
