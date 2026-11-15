@@ -157,5 +157,21 @@ module.exports = function () {
   }
   r.ok(barrou, "limite diário de adaptações por candidato");
 
+  // Propriedade ADAPTACOES_POR_DIA: sem_limite, um número e valores inválidos (volta ao padrão).
+  const propOriginal = ctx.prop_;
+  const comProp = (valor, fn) => { ctx.prop_ = (k) => (k === "ADAPTACOES_POR_DIA" ? valor : "segredo-de-teste"); try { return fn(); } finally { ctx.prop_ = propOriginal; } };
+  r.ok(g("ADAPTACAO.POR_DIA") === 10 && ctx.limiteAdaptacoesPorDia_() === 10, "sem a propriedade: o padrão de 10 por dia");
+  r.ok(comProp("sem_limite", () => ctx.limiteAdaptacoesPorDia_()) === null && comProp("  SEM_LIMITE ", () => ctx.limiteAdaptacoesPorDia_()) === null, "sem_limite (em qualquer caixa): sem limite");
+  r.ok(comProp("25", () => ctx.limiteAdaptacoesPorDia_()) === 25, "número positivo: esse limite");
+  r.ok(["0", "-3", "abc", "2.5", ""].every((v) => comProp(v, () => ctx.limiteAdaptacoesPorDia_()) === 10), "valor inválido (0, negativo, texto, decimal, vazio): volta ao padrão");
+  const antesSem = chamadasIA.length;
+  let liberou = 0;
+  comProp("sem_limite", () => {
+    for (let i = 0; i < 4; i++) { respostasIA.push(resp()); ctx.adaptarParaVaga(A, "v:1"); liberou++; }
+  });
+  r.ok(liberou === 4 && chamadasIA.length === antesSem + 4, "sem_limite: o candidato que já estourou o limite continua adaptando");
+  respostasIA.push(resp());
+  r.erro(() => ctx.adaptarParaVaga(A, "v:1"), /Limite de adaptações/, "tirando a propriedade, o limite de 10 volta a valer");
+
   return r;
 };

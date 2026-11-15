@@ -74,11 +74,14 @@ function adaptarParaVaga(token: string, vagaId: unknown): Adaptacao {
   const ficha = fichaParaReescrita_(s.usuario_id);
   if (!ficha.fatos.length) throw new Error("Confirme alguns itens da sua ficha antes: a IA só usa itens confirmados.");
 
-  const cache = CacheService.getScriptCache();
-  const chave = `adp:${s.usuario_id}:${Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyyMMdd")}`;
-  const vezes = Number(cache.get(chave) || 0);
-  if (vezes >= ADAPTACAO.POR_DIA) throw new Error("Limite de adaptações de hoje atingido. Tente amanhã.");
-  cache.put(chave, String(vezes + 1), 26 * 3600);
+  const limite = limiteAdaptacoesPorDia_();
+  if (limite !== null) {
+    const cache = CacheService.getScriptCache();
+    const chave = `adp:${s.usuario_id}:${Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyyMMdd")}`;
+    const vezes = Number(cache.get(chave) || 0);
+    if (vezes >= limite) throw new Error("Limite de adaptações de hoje atingido. Tente amanhã.");
+    cache.put(chave, String(vezes + 1), 26 * 3600);
+  }
 
   const dadosVaga = dadosDaVaga_(id);
   const conteudo = conteudoAdaptacao_(dadosVaga, descricao.texto, ficha, preferenciasTexto_(s.usuario_id));
@@ -160,6 +163,18 @@ function ultimaAdaptacao(token: string, vagaId: unknown): Adaptacao {
 }
 
 // ---------- Uso interno ----------
+
+/**
+ * Limite diário de adaptações por candidato. A Propriedade do Script ADAPTACOES_POR_DIA muda o limite sem
+ * nova publicação: um número positivo, ou "sem_limite" (null) para ajustar o ambiente. Ausente ou
+ * inválida: ADAPTACAO.POR_DIA. Sem limite, as adaptações não entram no contador do dia.
+ */
+function limiteAdaptacoesPorDia_(): number | null {
+  const v = String(prop_(PROP.ADAPTACOES_POR_DIA) ?? "").trim().toLowerCase();
+  if (v === "sem_limite") return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : ADAPTACAO.POR_DIA;
+}
 
 function dadosDaVaga_(vagaId: string): { titulo: string; empresa: string } {
   const { cab, linhas } = lerAba_("Vagas");
