@@ -5,6 +5,8 @@ const PROP = {
   CLAUDE_API_KEY: "CLAUDE_API_KEY",
   AGENTE_SEGREDO: "AGENTE_SEGREDO",
   LOGIN_SEGREDO: "LOGIN_SEGREDO",
+  // Opcional: limite diário de adaptações por candidato (número, ou sem_limite). Ausente = ADAPTACAO.POR_DIA.
+  ADAPTACOES_POR_DIA: "ADAPTACOES_POR_DIA",
 } as const;
 
 const MODELO_IA = "claude-sonnet-5-5";
