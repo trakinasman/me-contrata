@@ -68,5 +68,19 @@ module.exports = function () {
   const seis = cinco + " Quero formar gente.";
   r.ok(ritmoDe(seis).nota !== 50 && /em 6 frases/.test(ritmoDe(seis).detalhe), "ritmo: 6 frases já são julgadas");
 
+  // Checagem neutra (texto curto demais) não entra na média nem na checagem mais fraca. Caso real da
+  // Teltec: "O que espera" com 5 frases tirava 68 "revisar" só por causa do Ritmo neutro (50).
+  const espera = "A vaga descreve um NOC com acompanhamento de indicadores, 1:1 e PDI. Isso bate com o que penso de liderar operação: cuidar de indicador, mas principalmente formar gente. Quero uma operação em que o processo acompanhe o contrato, porque SLA ruim quase nunca é falta de esforço do time. Sobre o formato, híbrido em Florianópolis está dentro do que procuro, e moro na Grande Florianópolis. [CONFIRMAR: porte da equipe e tipo de desafio que você quer nesta vaga]";
+  const av = avaliar(espera, []);
+  const neutras = av.checagens.filter((c) => c.neutra);
+  const julgadas = av.checagens.filter((c) => !c.neutra);
+  const menorJulgada = Math.min(...julgadas.map((c) => c.nota));
+  const mediaJulgadas = julgadas.reduce((a, c) => a + c.nota, 0) / julgadas.length;
+  r.ok(neutras.length >= 1 && neutras.every((c) => c.nota === 50), "texto curto: checagens neutras marcadas (nota 50)");
+  r.ok(Math.abs(av.nota - Math.round((mediaJulgadas * 0.6 + menorJulgada * 0.4) * 10) / 10) < 0.11, "nota total só com as checagens julgadas");
+  r.ok(av.nota > 50 && (av.veredito === "passa") === (av.nota >= 70 && menorJulgada >= 55), "veredito usa a checagem mais fraca entre as julgadas");
+  const soCurto = avaliar("Título curto.", []);
+  r.ok(Number.isFinite(soCurto.nota) && soCurto.checagens.length === 5, "texto muito curto: nota finita");
+
   return r;
 };

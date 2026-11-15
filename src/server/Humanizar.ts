@@ -73,6 +73,8 @@ interface ChecagemPT {
   nome: string;
   nota: number;
   detalhe: string;
+  /** Texto curto demais para julgar: a nota 50 é neutra e fica fora da média e da checagem mais fraca. */
+  neutra?: boolean;
 }
 
 interface SinalPT {
@@ -167,7 +169,7 @@ function avaliarTextoPT_(texto: string, evitar: string[] = []): AvaliacaoPT {
   const tamanhos = frasesPT_(t).map((s) => s.split(/\s+/).length);
   // Menos de 6 frases é amostra pequena: com 4 ou 5, o "O que espera da empresa" tirava 9 a 14 em todas as gerações.
   if (tamanhos.length < 6) {
-    checagens.push({ id: "ritmo", nome: "Ritmo", nota: 50, detalhe: "texto curto demais para julgar" });
+    checagens.push({ id: "ritmo", nome: "Ritmo", nota: 50, detalhe: "texto curto demais para julgar", neutra: true });
   } else {
     const media = tamanhos.reduce((a, b) => a + b, 0) / tamanhos.length;
     const cv = media ? desvioPadrao_(tamanhos) / media : 0;
@@ -176,7 +178,7 @@ function avaliarTextoPT_(texto: string, evitar: string[] = []): AvaliacaoPT {
 
   // 2. Concretude: números e nomes próprios fora do começo da frase.
   if (pal.length < 25) {
-    checagens.push({ id: "concretude", nome: "Concretude", nota: 50, detalhe: "texto curto demais para julgar" });
+    checagens.push({ id: "concretude", nome: "Concretude", nota: 50, detalhe: "texto curto demais para julgar", neutra: true });
   } else {
     const numeros = (t.match(/\b\d[\d.,]*%?|R\$\s?\d/g) || []).length;
     const nomes = new Set(t.match(rePT_(/(?<![.!?:]\s)(?<!^)(?<![-\u2022]\s)\b[A-ZÀ-Ý][a-zà-ÿ]{2,}\b/gm)) || []).size;
@@ -222,7 +224,7 @@ function avaliarTextoPT_(texto: string, evitar: string[] = []): AvaliacaoPT {
   const topicosIguais = topicos.length >= 3 && desvioPadrao_(topicos) < 1.6;
   if (topicosIguais) sinais.push({ tipo: "estrutura", nome: "Tópicos do mesmo tamanho", dica: "varie: um curto, um longo", qtd: topicos.length });
   if (pal.length < 25) {
-    checagens.push({ id: "voz", nome: "Voz", nota: 50, detalhe: "texto curto demais para julgar" });
+    checagens.push({ id: "voz", nome: "Voz", nota: 50, detalhe: "texto curto demais para julgar", neutra: true });
   } else {
     const pessoa = ((t.match(rePT_(/\b(?:eu|me|mim|comigo|meu|meus|minha|minhas|n[oó]s|nosso|nossos|nossa|nossas|voc[eê]s?|seu|seus|sua|suas)\b/gi)) || []).length
       + (t.match(rePT_(/\ba gente\b/gi)) || []).length
@@ -241,7 +243,9 @@ function avaliarTextoPT_(texto: string, evitar: string[] = []): AvaliacaoPT {
   }
 
   // Como o detect.py: a checagem mais fraca pesa, porque um detector só precisa de um sinal.
-  const notas = checagens.map((c) => c.nota);
+  // As neutras (texto curto demais) não entram: um 50 inventado travaria todo texto curto em "revisar".
+  const julgadas = checagens.filter((c) => !c.neutra);
+  const notas = (julgadas.length ? julgadas : checagens).map((c) => c.nota);
   const media = notas.reduce((a, b) => a + b, 0) / notas.length;
   const menor = Math.min(...notas);
   const nota = Math.round((media * 0.6 + menor * 0.4) * 10) / 10;
