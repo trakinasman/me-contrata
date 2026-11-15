@@ -147,6 +147,36 @@ module.exports = function () {
   ctx.adaptarParaVaga(A, "v:1");
   r.ok(chamadasIA.length === chamadas0 + 1, "textos curtos (menos de 6 frases) não disparam segunda chamada");
 
+  // Editor (E5-04): cada edição vira uma versão nova, com o limite do tipo e isolamento.
+  const linhasDoTipo = (tipo) => abas.Textos.d.filter((l) => l[1] === "usr-A" && l[2] === "v:1" && l[3] === tipo);
+  const antesEd = linhasDoTipo("candidatura_resumo");
+  const verAntes = Math.max(...antesEd.map((l) => l[6]));
+  r.ok(ctx.ultimaAdaptacao(A, "v:1").textos.every((x) => x.editado === false), "versões geradas pela IA: editado = false");
+  const ed1 = ctx.salvarTextoAdaptado(A, "v:1", "candidatura_resumo", "  Novo   resumo,\r\n\r\n\r\n\r\ncom parágrafo [CONFIRMAR: número].  ");
+  r.ok(ed1.conteudo === "Novo resumo,\n\ncom parágrafo [CONFIRMAR: número]." && ed1.versao === verAntes + 1 && ed1.editado === true && ed1.aConfirmar === 1, "edição: espaços e quebras arrumados, versão +1, marcada como editada");
+  const linhaEd = linhasDoTipo("candidatura_resumo").at(-1);
+  r.ok(linhasDoTipo("candidatura_resumo").length === antesEd.length + 1 && linhaEd[7] === true && linhaEd[4] === ed1.conteudo && linhaEd[5] === 900, "grava linha nova em Textos (editado_pelo_usuario, limite); a anterior fica");
+  r.ok(ed1.avaliacao && typeof ed1.avaliacao.nota === "number", "texto corrido editado volta com a naturalidade recalculada");
+  const nLinhas = abas.Textos.d.length;
+  const ed2 = ctx.salvarTextoAdaptado(A, "v:1", "candidatura_resumo", ed1.conteudo);
+  r.ok(abas.Textos.d.length === nLinhas && ed2.versao === ed1.versao && ed2.editado === true, "sem mudança: não grava versão nova");
+  const ult2 = ctx.ultimaAdaptacao(A, "v:1");
+  const resumoUlt = ult2.textos.find((x) => x.tipo === "candidatura_resumo");
+  r.ok(resumoUlt.conteudo === ed1.conteudo && resumoUlt.editado === true && ult2.textos.find((x) => x.tipo === "candidatura_porque").editado === false, "ultimaAdaptacao mostra a edição; os outros textos seguem não editados");
+
+  r.erro(() => ctx.salvarTextoAdaptado(A, "v:1", "candidatura_resumo", "x".repeat(901)), /passa do limite: 901 de 900/, "acima do limite do texto: recusa com a conta");
+  r.erro(() => ctx.salvarTextoAdaptado(A, "v:1", "candidatura_resumo", " \n "), /vazio/, "texto vazio: recusa");
+  r.erro(() => ctx.salvarTextoAdaptado(A, "v:1", "candidatura_resumo", 123), /vazio/, "conteúdo que não é texto: recusa");
+  r.erro(() => ctx.salvarTextoAdaptado(A, "v:1", "linkedin_sobre", "texto"), /desconhecido/, "tipo que não é de candidatura: recusa");
+  r.erro(() => ctx.salvarTextoAdaptado(B, "v:1", "candidatura_resumo", "texto"), /Vaga não encontrada/, "vaga de outro candidato: recusa");
+  r.erro(() => ctx.salvarTextoAdaptado(B, "v:2", "candidatura_resumo", "texto"), /Adapte a vaga antes/, "vaga que nunca foi adaptada: recusa");
+
+  const lista1 = ctx.salvarTextoAdaptado(A, "v:1", "candidatura_fortes", " Um ponto forte.\n\n  Outro   ponto.  \n");
+  r.ok(lista1.itens.join("|") === "Um ponto forte.|Outro ponto." && lista1.conteudo === "Um ponto forte.\nOutro ponto." && lista1.avaliacao === null && lista1.editado, "lista: um item por linha, linhas vazias somem, sem naturalidade");
+  r.erro(() => ctx.salvarTextoAdaptado(A, "v:1", "candidatura_fortes", "a\nb\nc\nd\ne\nf"), /no máximo 5 itens/, "lista com 6 itens: recusa");
+  r.erro(() => ctx.salvarTextoAdaptado(A, "v:1", "candidatura_fortes", "curto\n" + "y".repeat(251)), /O item 2 passa do limite: 251 de 250/, "item acima do limite: diz qual");
+  r.ok(abas.Textos.d.filter((l) => l[1] === "usr-B").length === 0, "isolamento: nada gravado para outro candidato");
+
   // Limite diário.
   const lim = g("ADAPTACAO.POR_DIA");
   respostasIA.length = 0;

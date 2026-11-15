@@ -511,6 +511,7 @@
 
     function adaptarVaga(v) {
       var anterior = adaptacoes[v.vagaId] && adaptacoes[v.vagaId].a;
+      Object.keys(edicoes).forEach(function (k) { if (k.indexOf(v.vagaId + "|") === 0) delete edicoes[k]; });
       adaptacoes[v.vagaId] = { estado: "gerando", a: anterior };
       desenharVagas();
       chamar("adaptarParaVaga", [tokenAtual, v.vagaId], function (a) {
@@ -522,7 +523,85 @@
       });
     }
 
-    function blocoTextoAdaptado(t) {
+    // Editor (E5-04): cada texto abre numa caixa de edição com contador; "Salvar versão" grava uma versão nova.
+    // O limite vale por texto (ou por item nas listas); o servidor confere de novo. O texto vai por textContent / value.
+    var edicoes = {};            // vagaId|tipo -> { valor, salvando, erro }
+    var confirmandoAdaptar = {}; // vagaId -> true enquanto pergunta se pode gerar de novo por cima das edições
+    var MAX_ITENS_LISTA = 5;
+
+    function medirEdicao(t, valor) {
+      if (t.itens) {
+        var itens = valor.split(/\r?\n/).map(function (x) { return x.replace(/\s+/g, " ").trim(); }).filter(function (x) { return x; });
+        var tamanhos = itens.map(function (x) { return x.length; });
+        var passou = tamanhos.some(function (n) { return n > t.limite; });
+        return {
+          ok: itens.length > 0 && itens.length <= MAX_ITENS_LISTA && !passou,
+          texto: itens.length + (itens.length === 1 ? " item" : " itens") + " (até " + MAX_ITENS_LISTA + ") · tamanhos: " + (tamanhos.join(", ") || "-") + " · até " + t.limite + " cada"
+        };
+      }
+      var n = valor.trim().length;
+      return { ok: n > 0 && n <= t.limite, texto: n + " / " + t.limite + " caracteres" };
+    }
+
+    function trocarTextoAdaptado(v, novo) {
+      var a = adaptacoes[v.vagaId] && adaptacoes[v.vagaId].a;
+      if (!a) return;
+      a.textos = a.textos.map(function (x) { return x.tipo === novo.tipo ? novo : x; });
+    }
+
+    function cabecalhoTexto(t, contagem) {
+      return h("div", { class: "row entre" },
+        h("h4", {}, t.nome),
+        h("span", {},
+          t.editado ? h("span", { class: "chip", title: "Esta versão foi escrita ou editada por você" }, "editado por você") : null, " ",
+          t.aConfirmar ? h("span", { class: "chip warn" }, t.aConfirmar + " a confirmar") : null, " ",
+          contagem));
+    }
+
+    function formEdicao(v, t, ed, chave) {
+      var area = h("textarea", { rows: t.itens ? "6" : "10", maxlength: "4000", "aria-label": "Editar " + t.nome });
+      area.value = ed.valor;
+      var conta = h("span", { class: "small" });
+      var erro = h("p", { class: "erro", role: "alert" }, ed.erro || "");
+      var salvar = h("button", { class: "btn mini prim", type: "button" }, ed.salvando ? "Salvando…" : "Salvar versão");
+      var cancelar = h("button", { class: "btn mini", type: "button", onclick: function () { delete edicoes[chave]; desenharVagas(); } }, "Cancelar");
+      function atualizar() {
+        ed.valor = area.value;
+        var m = medirEdicao(t, area.value);
+        conta.textContent = m.texto;
+        conta.className = "small " + (m.ok ? "muted" : "erro");
+        salvar.disabled = !m.ok || !!ed.salvando;
+        cancelar.disabled = !!ed.salvando;
+      }
+      area.addEventListener("input", atualizar);
+      salvar.addEventListener("click", function () {
+        ed.salvando = true;
+        ed.erro = "";
+        ed.valor = area.value;
+        atualizar();
+        salvar.textContent = "Salvando…";
+        chamar("salvarTextoAdaptado", [tokenAtual, v.vagaId, t.tipo, area.value], function (novo) {
+          trocarTextoAdaptado(v, novo);
+          delete edicoes[chave];
+          desenharVagas();
+          avisarVagas(novo.nome + ": versão " + novo.versao + " salva.");
+        }, function (msg) {
+          ed.salvando = false;
+          ed.erro = msg;
+          desenharVagas();
+        });
+      });
+      atualizar();
+      return h("div", { class: "stack reescrita" },
+        cabecalhoTexto(t, null),
+        t.itens ? h("p", { class: "small muted" }, "Um item por linha.") : null,
+        area, h("div", { class: "row entre" }, erro, conta),
+        h("div", { class: "row" }, salvar, cancelar));
+    }
+
+    function blocoTextoAdaptado(v, t) {
+      var chave = v.vagaId + "|" + t.tipo;
+      if (edicoes[chave]) return formEdicao(v, t, edicoes[chave], chave);
       var aviso = h("span", { class: "small muted" });
       var contagem = t.itens
         ? t.itens.length + (t.itens.length === 1 ? " item" : " itens") + ", até " + t.limite + " caracteres cada"
@@ -533,13 +612,11 @@
           }))
         : h("div", { class: "texto-gerado" }, comMarcas(t.conteudo));
       return h("div", { class: "stack reescrita" },
-        h("div", { class: "row entre" },
-          h("h4", {}, t.nome),
-          h("span", {}, t.aConfirmar ? h("span", { class: "chip warn" }, t.aConfirmar + " a confirmar") : null, " ",
-            h("span", { class: "small muted" }, contagem))),
+        cabecalhoTexto(t, h("span", { class: "small muted" }, contagem)),
         corpo,
         desenharNaturalidade(t.avaliacao),
         h("div", { class: "row" },
+          h("button", { class: "btn mini", type: "button", onclick: function () { edicoes[chave] = { valor: t.conteudo }; desenharVagas(); } }, "Editar"),
           h("button", { class: "btn mini", type: "button", onclick: function () { copiar(t.conteudo, aviso); } }, t.itens ? "Copiar itens" : "Copiar"),
           aviso));
     }
@@ -548,18 +625,30 @@
       var e = adaptacoes[v.vagaId] || { estado: "carregando" };
       if (e.estado === "carregando") return h("div", { class: "painel-descricao" }, h("p", { class: "small muted" }, "Carregando…"));
       var gerando = e.estado === "gerando";
-      var botao = h("button", { class: "btn mini prim", type: "button", disabled: gerando, onclick: function () { adaptarVaga(v); } },
-        e.a ? "Adaptar de novo" : "Adaptar para esta vaga");
+      var temEdicao = !!e.a && e.a.textos.some(function (t) { return t.editado; });
+      var acoes;
+      if (confirmandoAdaptar[v.vagaId]) {
+        acoes = h("div", { class: "stack aviso" },
+          h("p", {}, "Adaptar de novo cria uma versão nova dos 6 textos e esconde as suas edições (elas ficam guardadas, mas deixam de aparecer aqui). Edições ainda não salvas se perdem."),
+          h("div", { class: "row" },
+            h("button", { class: "btn mini prim", type: "button", onclick: function () { delete confirmandoAdaptar[v.vagaId]; adaptarVaga(v); } }, "Adaptar mesmo assim"),
+            h("button", { class: "btn mini", type: "button", onclick: function () { delete confirmandoAdaptar[v.vagaId]; desenharVagas(); } }, "Cancelar")));
+      } else {
+        acoes = h("div", { class: "row" },
+          h("button", { class: "btn mini prim", type: "button", disabled: gerando, onclick: function () {
+            if (temEdicao) { confirmandoAdaptar[v.vagaId] = true; desenharVagas(); } else adaptarVaga(v);
+          } }, e.a ? "Adaptar de novo" : "Adaptar para esta vaga"));
+      }
       var blocos = [
         e.estado === "vazia" ? h("p", { class: "small muted" }, "Gera os 6 textos desta candidatura só com os itens confirmados da sua ficha. Precisa da descrição da vaga salva (botão Descrição) e leva até um minuto.") : null,
         e.erro ? h("p", { class: "erro", role: "alert" }, e.erro) : null,
         gerando ? h("p", { class: "small muted" }, "Adaptando… pode levar até um minuto.") : null,
-        h("div", { class: "row" }, botao)
+        acoes
       ];
       if (e.a) {
         var quando = new Date(e.a.textos[0].criadoEm);
         blocos.push(h("p", { class: "small muted" }, "Versão de " + (isNaN(quando) ? e.a.textos[0].criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))));
-        e.a.textos.forEach(function (t) { blocos.push(blocoTextoAdaptado(t)); });
+        e.a.textos.forEach(function (t) { blocos.push(blocoTextoAdaptado(v, t)); });
         if (e.a.conferir && e.a.conferir.length) {
           blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira antes de enviar:"),
             h("ul", {}, e.a.conferir.map(function (c) { return h("li", {}, c); }))));

@@ -18,6 +18,7 @@ const ADAPTACAO = {
   TENTATIVAS: 2,
   MAX_DESCRICAO: 30000,
   MAX_NOTAS: 8,
+  EDICOES_POR_DIA: 200,
 };
 
 interface TipoAdaptacao {
@@ -53,6 +54,8 @@ interface TextoAdaptado {
   versao: number;
   criadoEm: string;
   aConfirmar: number;
+  /** A versão foi escrita ou editada pelo candidato (E5-04), não gerada pela IA. */
+  editado: boolean;
   /** Só nos textos corridos. */
   avaliacao: AvaliacaoPT | null;
 }
@@ -119,7 +122,7 @@ function adaptarParaVaga(token: string, vagaId: unknown): Adaptacao {
     const conteudoTexto = partes.join("\n");
     return {
       tipo: t.tipo, nome: t.nome, conteudo: conteudoTexto, itens: t.lista ? partes : undefined, limite: t.limite,
-      versao: (versoes[t.tipo] ?? 0) + 1, criadoEm: agora.toISOString(), aConfirmar: contarConfirmar_(conteudoTexto),
+      versao: (versoes[t.tipo] ?? 0) + 1, criadoEm: agora.toISOString(), aConfirmar: contarConfirmar_(conteudoTexto), editado: false,
       avaliacao: t.lista ? null : avaliarTextoPT_(conteudoTexto, evitar, t.semConcretude),
     };
   });
@@ -156,13 +159,86 @@ function ultimaAdaptacao(token: string, vagaId: unknown): Adaptacao {
       tipo: t.tipo, nome: t.nome, conteudo, itens: t.lista ? conteudo.split("\n") : undefined,
       limite: Number(l[c("limite_caracteres")]) || t.limite, versao: Number(l[c("versao")]) || 1,
       criadoEm: criado instanceof Date ? criado.toISOString() : String(criado), aConfirmar: contarConfirmar_(conteudo),
+      editado: String(l[c("editado_pelo_usuario")]).trim().toLowerCase() === "true",
       avaliacao: t.lista ? null : avaliarTextoPT_(conteudo, evitar, t.semConcretude),
     });
   }
   return { vagaId: id, textos, conferir: [] };
 }
 
+/**
+ * Salva a edição do candidato como uma versão nova do texto (E5-04). O texto é dele: não passa pelo
+ * limpador. Respeita o limite do tipo (do texto, ou de cada item nas listas). A versão anterior fica
+ * na aba Textos. Sem mudança em relação à última versão, não grava nada.
+ */
+function salvarTextoAdaptado(token: string, vagaId: unknown, tipo: unknown, conteudo: unknown): TextoAdaptado {
+  const s = exigirAceite_(token);
+  const id = vagaDoCandidato_(s.usuario_id, vagaId);
+  const t = TIPOS_ADAPTACAO.find((x) => x.tipo === String(tipo));
+  if (!t) throw new Error("Texto desconhecido.");
+  if (typeof conteudo !== "string") throw new Error("O texto está vazio.");
+
+  const cache = CacheService.getScriptCache();
+  const chave = `edt:${s.usuario_id}:${Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyyMMdd")}`;
+  const vezes = Number(cache.get(chave) || 0);
+  if (vezes >= ADAPTACAO.EDICOES_POR_DIA) throw new Error("Limite de edições de hoje atingido. Tente amanhã.");
+
+  const bruto = conteudo.replace(/\r\n?/g, "\n");
+  let texto: string;
+  if (t.lista) {
+    const itens = bruto.split("\n").map((x) => x.replace(/\s+/g, " ").trim()).filter((x) => x);
+    if (!itens.length) throw new Error("O texto está vazio.");
+    if (itens.length > t.lista.max) throw new Error(`Use no máximo ${t.lista.max} itens, um por linha.`);
+    const longo = itens.findIndex((x) => x.length > t.limite);
+    if (longo >= 0) throw new Error(`O item ${longo + 1} passa do limite: ${itens[longo].length} de ${t.limite} caracteres.`);
+    texto = itens.join("\n");
+  } else {
+    texto = bruto.split("\n").map((x) => x.replace(/[ \t]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    if (!texto) throw new Error("O texto está vazio.");
+    if (texto.length > t.limite) throw new Error(`O texto passa do limite: ${texto.length} de ${t.limite} caracteres.`);
+  }
+
+  const atual = ultimaVersaoDoTexto_(s.usuario_id, id, t.tipo);
+  if (!atual) throw new Error("Adapte a vaga antes de editar os textos.");
+  const evitar = termosEvitar_(fichaParaReescrita_(s.usuario_id).evitar);
+  const montar = (conteudoFinal: string, versao: number, criadoEm: string, editado: boolean): TextoAdaptado => ({
+    tipo: t.tipo, nome: t.nome, conteudo: conteudoFinal, itens: t.lista ? conteudoFinal.split("\n") : undefined, limite: t.limite,
+    versao, criadoEm, aConfirmar: contarConfirmar_(conteudoFinal), editado,
+    avaliacao: t.lista ? null : avaliarTextoPT_(conteudoFinal, evitar, t.semConcretude),
+  });
+  if (atual.conteudo === texto) return montar(texto, atual.versao, atual.criadoEm, atual.editado);
+
+  cache.put(chave, String(vezes + 1), 26 * 3600);
+  const agora = new Date();
+  const versao = atual.maior + 1;
+  anexarLinha_("Textos", {
+    texto_id: Utilities.getUuid(), usuario_id: s.usuario_id, vaga_id: id, tipo: t.tipo, conteudo: texto,
+    limite_caracteres: t.limite, versao, editado_pelo_usuario: true, criado_em: agora,
+  });
+  registrarLog_(s.usuario_id, "texto_editado", `${id}: ${t.tipo.replace("candidatura_", "")} v${versao} ${texto.length}c`);
+  return montar(texto, versao, agora.toISOString(), true);
+}
+
 // ---------- Uso interno ----------
+
+/** Última versão gravada do texto da vaga (a de maior número), ou null se nunca foi gerado. */
+function ultimaVersaoDoTexto_(usuarioId: string, vagaId: string, tipo: string): { conteudo: string; versao: number; maior: number; criadoEm: string; editado: boolean } | null {
+  const { cab, linhas } = lerAba_("Textos");
+  const c = (n: string) => coluna_(cab, n);
+  let melhor: unknown[] | null = null;
+  for (const l of linhas) {
+    if (String(l[c("usuario_id")]).trim() !== usuarioId || String(l[c("vaga_id")]).trim() !== vagaId || String(l[c("tipo")]).trim() !== tipo) continue;
+    if (!melhor || Number(l[c("versao")]) >= Number(melhor[c("versao")])) melhor = l;
+  }
+  if (!melhor) return null;
+  const criado = melhor[c("criado_em")];
+  const versao = Number(melhor[c("versao")]) || 1;
+  return {
+    conteudo: String(melhor[c("conteudo")]), versao, maior: versao,
+    criadoEm: criado instanceof Date ? criado.toISOString() : String(criado),
+    editado: String(melhor[c("editado_pelo_usuario")]).trim().toLowerCase() === "true",
+  };
+}
 
 /**
  * Limite diário de adaptações por candidato. A Propriedade do Script ADAPTACOES_POR_DIA muda o limite sem
