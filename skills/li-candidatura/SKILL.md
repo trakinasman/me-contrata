@@ -83,7 +83,14 @@ contagem mostra o total e o limite ("482 / 500").
   recrutadora. Siga o tom dos fatos ("como escrevo", "palavras que uso").
 - Abra com o resultado ou com a cena concreta, não com adjetivo.
 - Divida o mérito com o time quando o resultado foi de um time.
-- Frases de tamanho variado. Sem travessão, sem aspas curvas, sem emoji.
+- Cumpra o que o tom da pessoa diz sobre o ritmo das frases. Se ele pede frase
+  curta para o número e para a conclusão, o número vai numa frase curta e o
+  texto fecha com uma frase curta. Se pede quebrar encadeamento de vírgulas, quebre.
+  Sem instrução de ritmo no tom, use esta regra: em todo texto corrido, pelo
+  menos uma frase de até 8 palavras e uma de mais de 25, e nunca três frases
+  seguidas de tamanho parecido. Dois-pontos e ponto e vírgula não separam frases:
+  um rótulo seguido de uma frase longa conta como uma frase longa.
+- Sem travessão, sem aspas curvas, sem emoji.
 - Sem vocabulário de texto gerado: "apaixonado por", "proativo", "resiliente",
   "sinergia", "alavancar", "agregar valor", "no cenário atual", "vale ressaltar".
   Nem as palavras que a pessoa evita.
