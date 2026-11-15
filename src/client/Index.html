@@ -354,7 +354,8 @@
             h("span", { class: "chip " + classe, title: "Nota pelas suas preferências e listas" }, v.nota == null ? "sem nota" : "nota " + v.nota))),
         v.motivos.length ? h("div", { class: "small muted" }, "Por quê: " + v.motivos.join(" · ")) : null,
         descartando === v.vagaId ? formDescarte(v) : acoesVaga(v),
-        descricaoAberta === v.vagaId ? painelDescricao(v) : null);
+        descricaoAberta === v.vagaId ? painelDescricao(v) : null,
+        adaptacaoAberta === v.vagaId ? painelAdaptacao(v) : null);
     }
 
     function acoesVaga(v) {
@@ -362,7 +363,8 @@
       return h("div", { class: "row" },
         h("button", { class: "btn mini", type: "button", "aria-expanded": aberta ? "true" : "false", onclick: function () { alternarDescricao(v); } },
           aberta ? "Fechar descrição" : "Descrição"),
-        h("button", { class: "btn mini", type: "button", disabled: true, title: "Chega com a adaptação de textos por vaga (E5-03)" }, "Adaptar (em breve)"),
+        h("button", { class: "btn mini", type: "button", "aria-expanded": adaptacaoAberta === v.vagaId ? "true" : "false", onclick: function () { alternarAdaptacao(v); } },
+          adaptacaoAberta === v.vagaId ? "Fechar adaptação" : "Adaptar"),
         v.noFunil ? h("span", { class: "chip ok" }, "no funil") :
           h("button", { class: "btn mini", type: "button", onclick: function (ev) { moverVaga(v, ev.target); } }, "Mover para o funil"),
         h("button", { class: "btn mini perigo", type: "button", onclick: function () { descartando = v.vagaId; desenharVagas(); } }, "Descartar"));
@@ -487,6 +489,83 @@
         e.erro ? h("p", { class: "small" }, e.erro) : h("p", { class: "small muted" }, "Cole a descrição completa do anúncio. Ela vale mais que a lida automaticamente."),
         v.link ? h("p", { class: "small" }, h("a", { href: v.link, target: "_blank", rel: "noopener noreferrer" }, "Abrir o anúncio em outra aba")) : null,
         texto, h("div", { class: "row entre" }, erro, conta), h("div", { class: "row" }, salvar, cancelar));
+    }
+
+    // ---------- Adaptação da candidatura (E5-03) ----------
+    // Os textos vêm da IA: entram por textContent (comMarcas destaca os [CONFIRMAR]), nunca por innerHTML.
+    var adaptacaoAberta = null;  // vaga com o painel de adaptação aberto
+    var adaptacoes = {};         // vagaId -> { estado: "carregando" | "vazia" | "gerando" | "ok", a, erro }
+
+    function alternarAdaptacao(v) {
+      if (adaptacaoAberta === v.vagaId) { adaptacaoAberta = null; desenharVagas(); return; }
+      adaptacaoAberta = v.vagaId;
+      if (!adaptacoes[v.vagaId]) {
+        adaptacoes[v.vagaId] = { estado: "carregando" };
+        chamar("ultimaAdaptacao", [tokenAtual, v.vagaId], function (a) {
+          adaptacoes[v.vagaId] = a.textos.length ? { estado: "ok", a: a } : { estado: "vazia" };
+          desenharVagas();
+        }, function (msg) { adaptacoes[v.vagaId] = { estado: "vazia", erro: msg }; desenharVagas(); });
+      }
+      desenharVagas();
+    }
+
+    function adaptarVaga(v) {
+      var anterior = adaptacoes[v.vagaId] && adaptacoes[v.vagaId].a;
+      adaptacoes[v.vagaId] = { estado: "gerando", a: anterior };
+      desenharVagas();
+      chamar("adaptarParaVaga", [tokenAtual, v.vagaId], function (a) {
+        adaptacoes[v.vagaId] = { estado: "ok", a: a };
+        desenharVagas();
+      }, function (msg) {
+        adaptacoes[v.vagaId] = anterior ? { estado: "ok", a: anterior, erro: msg } : { estado: "vazia", erro: msg };
+        desenharVagas();
+      });
+    }
+
+    function blocoTextoAdaptado(t) {
+      var aviso = h("span", { class: "small muted" });
+      var contagem = t.itens
+        ? t.itens.length + (t.itens.length === 1 ? " item" : " itens") + ", até " + t.limite + " caracteres cada"
+        : t.conteudo.length + " / " + t.limite + " caracteres";
+      var corpo = t.itens
+        ? h("ol", { class: "texto-gerado itens-adaptacao" }, t.itens.map(function (i) {
+            return h("li", {}, comMarcas(i), " ", h("span", { class: "small muted" }, "(" + i.length + ")"));
+          }))
+        : h("div", { class: "texto-gerado" }, comMarcas(t.conteudo));
+      return h("div", { class: "stack reescrita" },
+        h("div", { class: "row entre" },
+          h("h4", {}, t.nome),
+          h("span", {}, t.aConfirmar ? h("span", { class: "chip warn" }, t.aConfirmar + " a confirmar") : null, " ",
+            h("span", { class: "small muted" }, contagem))),
+        corpo,
+        desenharNaturalidade(t.avaliacao),
+        h("div", { class: "row" },
+          h("button", { class: "btn mini", type: "button", onclick: function () { copiar(t.conteudo, aviso); } }, t.itens ? "Copiar itens" : "Copiar"),
+          aviso));
+    }
+
+    function painelAdaptacao(v) {
+      var e = adaptacoes[v.vagaId] || { estado: "carregando" };
+      if (e.estado === "carregando") return h("div", { class: "painel-descricao" }, h("p", { class: "small muted" }, "Carregando…"));
+      var gerando = e.estado === "gerando";
+      var botao = h("button", { class: "btn mini prim", type: "button", disabled: gerando, onclick: function () { adaptarVaga(v); } },
+        e.a ? "Adaptar de novo" : "Adaptar para esta vaga");
+      var blocos = [
+        e.estado === "vazia" ? h("p", { class: "small muted" }, "Gera os 6 textos desta candidatura só com os itens confirmados da sua ficha. Precisa da descrição da vaga salva (botão Descrição) e leva até um minuto.") : null,
+        e.erro ? h("p", { class: "erro", role: "alert" }, e.erro) : null,
+        gerando ? h("p", { class: "small muted" }, "Adaptando… pode levar até um minuto.") : null,
+        h("div", { class: "row" }, botao)
+      ];
+      if (e.a) {
+        var quando = new Date(e.a.textos[0].criadoEm);
+        blocos.push(h("p", { class: "small muted" }, "Versão de " + (isNaN(quando) ? e.a.textos[0].criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))));
+        e.a.textos.forEach(function (t) { blocos.push(blocoTextoAdaptado(t)); });
+        if (e.a.conferir && e.a.conferir.length) {
+          blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira antes de enviar:"),
+            h("ul", {}, e.a.conferir.map(function (c) { return h("li", {}, c); }))));
+        }
+      }
+      return h("div", { class: "stack painel-descricao" }, blocos);
     }
 
     var timerVagas = null;
