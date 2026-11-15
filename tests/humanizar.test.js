@@ -61,5 +61,12 @@ module.exports = function () {
   const curto = avaliar("Título curto.", []);
   r.ok(curto.checagens.filter((c) => c.nota === 50).length >= 3, "texto curto: checagens de volume ficam neutras");
 
+  // Ritmo só é julgado com 6 frases ou mais (E5-03: o "O que espera" de 4 e 5 frases tirava 9 a 14 sempre).
+  const ritmoDe = (t) => avaliar(t, []).checagens.find((c) => c.id === "ritmo");
+  const cinco = "Procuro uma operação que decida por indicador. Isso vale para o NOC. Também vale para o suporte e para o campo, com contrato e prazo. Moro na Grande Florianópolis. O formato híbrido me serve.";
+  r.ok(ritmoDe(cinco).nota === 50 && /curto demais/.test(ritmoDe(cinco).detalhe), "ritmo: 5 frases ficam neutras (50)");
+  const seis = cinco + " Quero formar gente.";
+  r.ok(ritmoDe(seis).nota !== 50 && /em 6 frases/.test(ritmoDe(seis).detalhe), "ritmo: 6 frases já são julgadas");
+
   return r;
 };
