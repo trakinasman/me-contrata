@@ -54,6 +54,8 @@ module.exports = function () {
   ]);
   r.ok(["sinergia", "disruptivo", "mindset", "jornada", "game changer", "gratidão como hashtag"].every((t) => termos.includes(t)), "lista separada por vírgula, sem o parêntese");
   r.ok(termos.includes("estou muito feliz em anunciar") && termos.includes("humildemente compartilho"), "expressões entre aspas");
+  const comAspas = ctx.termosEvitar_(["Anglicismos desnecessários, como \"deliverar\" e \"fazer o follow\"."]);
+  r.ok(comAspas.join("|") === "deliverar|fazer o follow", "item com aspas: só os termos entre aspas (\"como\" não vira termo, achado do teste da E7-02)");
 
   // Texto curto não é julgado nas checagens que precisam de volume.
   const curto = avaliar("Título curto.", []);
