@@ -27,13 +27,15 @@ interface TipoAdaptacao {
   limite: number;
   /** Lista de itens (um por linha na aba Textos), com no máximo `max` itens. */
   lista?: { max: number };
+  /** Texto de preferência: sem número nem prova por regra, então a Concretude não conta na nota. */
+  semConcretude?: boolean;
 }
 
 /** Na ordem da tela. Limites padrão da skill, para quando a vaga não traz limite próprio. */
 const TIPOS_ADAPTACAO: TipoAdaptacao[] = [
   { tipo: "candidatura_resumo", campo: "resumo", nome: "Resumo do currículo ajustado", limite: 900 },
   { tipo: "candidatura_porque", campo: "porque", nome: "Por que contratar você", limite: 1000 },
-  { tipo: "candidatura_espera", campo: "espera", nome: "O que espera da empresa", limite: 600 },
+  { tipo: "candidatura_espera", campo: "espera", nome: "O que espera da empresa", limite: 600, semConcretude: true },
   { tipo: "candidatura_fortes", campo: "fortes", nome: "Pontos fortes", limite: 250, lista: { max: 5 } },
   { tipo: "candidatura_desenvolver", campo: "desenvolver", nome: "Pontos a desenvolver", limite: 300, lista: { max: 5 } },
   { tipo: "candidatura_carta", campo: "carta", nome: "Carta de apresentação", limite: 1500 },
@@ -115,7 +117,7 @@ function adaptarParaVaga(token: string, vagaId: unknown): Adaptacao {
     return {
       tipo: t.tipo, nome: t.nome, conteudo: conteudoTexto, itens: t.lista ? partes : undefined, limite: t.limite,
       versao: (versoes[t.tipo] ?? 0) + 1, criadoEm: agora.toISOString(), aConfirmar: contarConfirmar_(conteudoTexto),
-      avaliacao: t.lista ? null : avaliarTextoPT_(conteudoTexto, evitar),
+      avaliacao: t.lista ? null : avaliarTextoPT_(conteudoTexto, evitar, t.semConcretude),
     };
   });
   anexarLinhas_("Textos", textos.map((t) => ({
@@ -151,7 +153,7 @@ function ultimaAdaptacao(token: string, vagaId: unknown): Adaptacao {
       tipo: t.tipo, nome: t.nome, conteudo, itens: t.lista ? conteudo.split("\n") : undefined,
       limite: Number(l[c("limite_caracteres")]) || t.limite, versao: Number(l[c("versao")]) || 1,
       criadoEm: criado instanceof Date ? criado.toISOString() : String(criado), aConfirmar: contarConfirmar_(conteudo),
-      avaliacao: t.lista ? null : avaliarTextoPT_(conteudo, evitar),
+      avaliacao: t.lista ? null : avaliarTextoPT_(conteudo, evitar, t.semConcretude),
     });
   }
   return { vagaId: id, textos, conferir: [] };

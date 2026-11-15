@@ -69,6 +69,9 @@ module.exports = function () {
   const t = Object.fromEntries(res.textos.map((x) => [x.tipo, x]));
   r.ok(t.candidatura_fortes.itens.length === 2 && t.candidatura_fortes.limite === 250 && t.candidatura_fortes.avaliacao === null, "lista: itens, limite por item, sem nota de naturalidade");
   r.ok(t.candidatura_desenvolver.aConfirmar === 2 && t.candidatura_resumo.avaliacao && typeof t.candidatura_resumo.avaliacao.nota === "number", "conta [CONFIRMAR]; texto corrido tem nota");
+  const concEspera = t.candidatura_espera.avaliacao.checagens.find((c) => c.id === "concretude");
+  const concResumo = t.candidatura_resumo.avaliacao.checagens.find((c) => c.id === "concretude");
+  r.ok(concEspera.neutra === true && /não se aplica/.test(concEspera.detalhe) && !/não se aplica/.test(concResumo.detalhe), "O que espera: Concretude não conta; os outros textos continuam com ela");
   r.ok(res.conferir.length === 1, "lista do que conferir");
   const linhasA = abas.Textos.d.filter((l) => l[1] === "usr-A");
   r.ok(linhasA.length === 6 && linhasA.every((l) => l[2] === "v:1" && l[7] === false && ehData(l[8])), "6 linhas em Textos com o vaga_id, não editadas");

@@ -79,6 +79,14 @@ module.exports = function () {
   r.ok(neutras.length >= 1 && neutras.every((c) => c.nota === 50), "texto curto: checagens neutras marcadas (nota 50)");
   r.ok(Math.abs(av.nota - Math.round((mediaJulgadas * 0.6 + menorJulgada * 0.4) * 10) / 10) < 0.11, "nota total só com as checagens julgadas");
   r.ok(av.nota > 50 && (av.veredito === "passa") === (av.nota >= 70 && menorJulgada >= 55), "veredito usa a checagem mais fraca entre as julgadas");
+  // "O que espera da empresa" não leva número nem prova por regra: a Concretude (12 no caso real) não conta.
+  const esperaSemNumero = "Procuro uma operação em que o indicador guie a decisão, porque achômetro é o maior risco de um projeto. A vaga descreve a gestão técnica e operacional de um NOC, com SLAs, escalonamento e indicadores, e esse é o desafio que procuro, porque ali o processo precisa acompanhar o contrato. Quero também espaço para formar gente. O técnico de ontem vira o consultor ou coordenador de amanhã se alguém investir nele. A vaga descreve o formato híbrido na sede, que está entre as modalidades que aceito.";
+  const comConc = ctx.avaliarTextoPT_(esperaSemNumero, []);
+  const semConc = ctx.avaliarTextoPT_(esperaSemNumero, [], true);
+  const concDe = (a) => a.checagens.find((c) => c.id === "concretude");
+  r.ok(concDe(comConc).nota < 30 && !concDe(comConc).neutra, "sem a opção, o texto de preferência tira Concretude baixa");
+  r.ok(concDe(semConc).neutra === true && concDe(semConc).nota === 50 && /não se aplica/.test(concDe(semConc).detalhe), "semConcretude: a checagem fica neutra, com o motivo");
+  r.ok(semConc.nota > comConc.nota + 15 && semConc.veredito === "passa" && comConc.veredito !== "passa", "semConcretude: o texto passa de revisar para passa");
   const soCurto = avaliar("Título curto.", []);
   r.ok(Number.isFinite(soCurto.nota) && soCurto.checagens.length === 5, "texto muito curto: nota finita");
 
