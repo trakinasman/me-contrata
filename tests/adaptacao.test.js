@@ -93,6 +93,57 @@ module.exports = function () {
   r.ok(ult.textos.length === 6 && ult.textos.every((x) => x.versao === 2) && ult.textos[3].itens.length === 2, "ultimaAdaptacao: última versão de cada texto, lista em itens");
   r.erro(() => ctx.ultimaAdaptacao(B, "v:1"), /Vaga não encontrada/, "ultimaAdaptacao: vaga de outro candidato recusada");
 
+  // Ritmo uniforme demais (E5-03, teste real da Teltec: Ritmo 1): uma segunda chamada, fica a de melhor ritmo.
+  const UNIFORME = [
+    "Eu cuido do suporte e do NOC com indicador claro e processo bem definido.",
+    "Eu lidero as equipes de operação com meta clara e acompanho cada resultado.",
+    "Eu fiz o time chegar ao SLA de setenta por cento com processo e muito dado.",
+    "Eu defino o padrão em checklist e cobro que todos sigam o mesmo caminho.",
+    "Eu audito os atendimentos na ferramenta e peço o dado antes de decidir.",
+    "Eu formo gente com conversa individual e plano de desenvolvimento para cada um.",
+    "Eu começaria auditando os atendimentos e pedindo o dado para o time inteiro.",
+  ].join(" ");
+  const VARIADO = [
+    "Eu cuido do suporte e do NOC com indicador claro.",
+    "SLA de 35% para 70%.",
+    "Foi processo, não esforço: o contrato mudava, e o processo do time não acompanhava, então ajustei o desenho dos chamados com o time inteiro na mesa.",
+    "Eu defino o padrão em checklist.",
+    "Depois cobro que todos sigam o mesmo caminho, e audito os atendimentos na ferramenta antes de decidir qualquer coisa nova para o time.",
+    "Formo gente.",
+    "Nos primeiros meses, começaria auditando os atendimentos e pedindo o dado.",
+  ].join(" ");
+  const ritmoDe = (t) => ctx.avaliarTextoPT_(t, []).checagens.find((c) => c.id === "ritmo");
+  r.ok(ritmoDe(UNIFORME).nota < 40 && !ritmoDe(UNIFORME).neutra && ritmoDe(VARIADO).nota >= 55, "textos de teste: o uniforme é baixo e o variado é bom");
+
+  let chamadas0 = chamadasIA.length;
+  respostasIA.push(resp({ porque: UNIFORME }), resp({ porque: VARIADO }));
+  const r3 = ctx.adaptarParaVaga(A, "v:1");
+  r.ok(chamadasIA.length === chamadas0 + 2, "ritmo uniforme: segunda chamada");
+  const pedido2 = chamadasIA.at(-1).messages[0].content;
+  r.ok(/frases de tamanho parecido: Por que contratar você/.test(pedido2) && /<fatos>/.test(pedido2), "segunda chamada diz qual texto variar e leva os mesmos dados");
+  r.ok(r3.textos.find((x) => x.tipo === "candidatura_porque").conteudo === VARIADO, "fica a segunda, de melhor ritmo");
+  const gravadasPorque = abas.Textos.d.filter((l) => l[1] === "usr-A" && l[3] === "candidatura_porque" && l[4] === VARIADO).length;
+  r.ok(gravadasPorque === 1, "grava só a versão escolhida, uma vez");
+
+  chamadas0 = chamadasIA.length;
+  respostasIA.push(resp({ porque: UNIFORME }), resp({ porque: UNIFORME.replace(/Eu /g, "Eu, ") }));
+  const r4 = ctx.adaptarParaVaga(A, "v:1");
+  r.ok(chamadasIA.length === chamadas0 + 2 && r4.textos.find((x) => x.tipo === "candidatura_porque").conteudo === UNIFORME, "segunda não melhora: mantém a primeira");
+
+  chamadas0 = chamadasIA.length;
+  respostasIA.push(resp({ porque: UNIFORME }), resp({ carta: "" }));
+  const r5 = ctx.adaptarParaVaga(A, "v:1");
+  r.ok(chamadasIA.length === chamadas0 + 2 && r5.textos.find((x) => x.tipo === "candidatura_porque").conteudo === UNIFORME, "segunda inválida: mantém a primeira, sem erro");
+
+  chamadas0 = chamadasIA.length;
+  respostasIA.push(resp({ porque: VARIADO }));
+  ctx.adaptarParaVaga(A, "v:1");
+  r.ok(chamadasIA.length === chamadas0 + 1, "ritmo bom: uma chamada só");
+  chamadas0 = chamadasIA.length;
+  respostasIA.push(resp());
+  ctx.adaptarParaVaga(A, "v:1");
+  r.ok(chamadasIA.length === chamadas0 + 1, "textos curtos (menos de 6 frases) não disparam segunda chamada");
+
   // Limite diário.
   const lim = g("ADAPTACAO.POR_DIA");
   respostasIA.length = 0;

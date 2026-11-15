@@ -88,6 +88,24 @@ function adaptarParaVaga(token: string, vagaId: unknown): Adaptacao {
   }
   if (!r) throw new Error("A adaptação não veio no formato esperado. Tente de novo em alguns minutos.");
 
+  // Ritmo muito uniforme (modelo varia muito de uma geração para outra: Ritmo 1 e 93 com os mesmos dados):
+  // uma segunda chamada, avisando quais textos variar. Fica a de melhor ritmo; não conta no limite diário.
+  const uniformes = textosUniformes_(r.textos);
+  if (uniformes.length) {
+    const aviso = `${conteudo}\n\nNa tentativa anterior, estes textos ficaram com frases de tamanho parecido: ${uniformes.map((u) => u.nome).join(", ")}. ` +
+      "Reescreva os seis textos com os mesmos fatos e varie o tamanho das frases nesses textos: junte duas frases curtas numa mais longa " +
+      "e inclua uma frase de até 8 palavras. Siga o tom da pessoa.";
+    let r2: typeof r | null = null;
+    try {
+      r2 = validarAdaptacao_(chamarIAJson_(s.usuario_id, "adaptar_vaga", systemAdaptacao_(), aviso, schemaAdaptacao_(), "high"));
+    } catch (e) {
+      registrarLog_(s.usuario_id, "adaptacao_ritmo", `${id}: segunda chamada falhou`);
+    }
+    const melhorou = !!r2 && menorRitmo_(r2.textos) > menorRitmo_(r.textos);
+    registrarLog_(s.usuario_id, "adaptacao_ritmo", `${id}: ${uniformes.map((u) => `${u.tipo.replace("candidatura_", "")} ${u.nota}`).join(", ")}; ${melhorou ? "usou a segunda" : "manteve a primeira"}`);
+    if (melhorou && r2) r = r2;
+  }
+
   const agora = new Date();
   const versoes = versoesDaVaga_(s.usuario_id, id);
   const evitar = termosEvitar_(ficha.evitar);
@@ -161,6 +179,29 @@ function versoesDaVaga_(usuarioId: string, vagaId: string): Record<string, numbe
     v[tipo] = Math.max(v[tipo] ?? 0, Number(l[c("versao")]) || 0);
   }
   return v;
+}
+
+/** Ritmo abaixo do qual o texto corrido é considerado uniforme demais (Ritmo 34 já deu "revisar"; 1 deu "parece IA"). */
+const RITMO_MINIMO_ADAPTACAO = 40;
+
+/** Nota de Ritmo de cada texto corrido que dá para julgar (6 frases ou mais). As listas ficam de fora. */
+function ritmosDosTextos_(textos: Record<string, string[]>): { tipo: string; nome: string; nota: number }[] {
+  const saida: { tipo: string; nome: string; nota: number }[] = [];
+  for (const t of TIPOS_ADAPTACAO) {
+    if (t.lista) continue;
+    const ritmo = avaliarTextoPT_(textos[t.tipo].join("\n"), []).checagens.find((c) => c.id === "ritmo");
+    if (ritmo && !ritmo.neutra) saida.push({ tipo: t.tipo, nome: t.nome, nota: ritmo.nota });
+  }
+  return saida;
+}
+
+function textosUniformes_(textos: Record<string, string[]>): { tipo: string; nome: string; nota: number }[] {
+  return ritmosDosTextos_(textos).filter((x) => x.nota < RITMO_MINIMO_ADAPTACAO);
+}
+
+/** Pior Ritmo entre os textos julgáveis (100 se nenhum dá para julgar). */
+function menorRitmo_(textos: Record<string, string[]>): number {
+  return Math.min(100, ...ritmosDosTextos_(textos).map((x) => x.nota));
 }
 
 /** A skill, mais o que é específico deste app: onde estão as entradas e o formato da saída. */
