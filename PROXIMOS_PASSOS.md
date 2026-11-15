@@ -14,9 +14,9 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
 | 4 — Perfil | Concluída | E4-01 a E4-06 concluídas e publicadas (E4-06 na versão @21, 14/11/2026). Nota do Roberto: 46 parcial para 76, completa |
-| 5 — Vagas | **Em andamento** | E5-01 publicada (@22 e @23). E5-02 (descrição da vaga) implementada em 14/11/2026, falta publicar. E5-03 depende da skill `li-candidatura` (E7-01, achado D7) |
+| 5 — Vagas | **Em andamento** | E5-01 publicada (@22 e @23). E5-02 (descrição) publicada (@24). E5-03 (adaptação por vaga) implementada em 15/11/2026, falta publicar; usa a skill `li-candidatura` (E7-01) como prompt |
 | 6 — Funil | A fazer | Etapas e aba Eventos já definidas (E5-01); falta a tela com a linha do tempo e os números |
-| 7 — Skill `li-candidatura` | **Em andamento** | E7-01 aprovada pelo Roberto em 14/11/2026 (`skills/li-candidatura/SKILL.md`). E7-02 concluída em 15/11/2026 (Qive, Vetta e Unetvale): nenhum fato inventado. Falta a E7-03, junto com a E5-03. Sobe para antes da E5-03 (achado D7) |
+| 7 — Skill `li-candidatura` | **Em andamento** | E7-01 aprovada pelo Roberto em 14/11/2026 (`skills/li-candidatura/SKILL.md`). E7-02 concluída em 15/11/2026 (Qive, Vetta e Unetvale): nenhum fato inventado. E7-03 (a skill embutida no build como prompt de `adaptarParaVaga()`) implementada em 15/11/2026, junto com a E5-03. Sobe para antes da E5-03 (achado D7) |
 | 8 — Piloto | A fazer | |
 
 ## Etapa 2 — Ficha do candidato
@@ -215,7 +215,7 @@ Do plano do piloto (doc no claude.ai):
 - Filtros de fonte, modalidade e UF. A UF sai do `local` ("Cidade/UF", "Cidade - UF" ou a sigla); muitos anúncios só trazem a cidade ou "BR", e esses ficam em "Sem UF no anúncio".
 - Descartar pede um motivo de uma lista e esconde a vaga para sempre. Motivos, decididos pelo Roberto em 14/11/2026: salário ou forma de contratação (CLT/PJ), local ou modalidade, requisitos ou nível da vaga, empresa, e "Outro" com detalhe. Esconde para sempre: não há restaurar, como pede o critério; o agente já não recria nem atualiza vaga descartada. O motivo ainda não muda as notas seguintes (o protótipo sugeria isso; fica para depois).
 - Mover para o funil cria a candidatura na etapa `inserida` na aba `Candidaturas`, sem duplicar; a tela do funil é a Etapa 6.
-- Adaptar aparece desativado até a E5-03, que depende da E7-01.
+- O botão Adaptar abre o painel de adaptação da vaga (E5-03).
 - Link do anúncio abre em outra aba e só se for https. Título, empresa e motivos entram por `textContent`.
 - Testes: `tests/vagas.test.js` (vigência, ordem, UF, isolamento, descarte com motivo, funil sem duplicar, eventos); 142 no total.
 
@@ -286,3 +286,12 @@ Perguntas a responder antes de integrar:
 **E7-01 aprovada (14/11/2026).** `skills/li-candidatura/SKILL.md`, neste repositório (decisão do Roberto): o build vai embutir o texto no app (E7-03) e uma cópia fica em `~/.claude/skills/li-candidatura` para o Claude Code. Só regras, para qualquer candidato; os fatos vêm da ficha. Decisões do Roberto: o 6º texto é a carta de apresentação (o plano dizia "6 textos" e listava 5); na candidatura vale "não falar da saída do emprego atual" (nem motivo, nem falar mal de empregador; nada de disponibilidade, início imediato ou pretensão salarial salvo se pedido); requisito sem prova vira ponto a desenvolver ou `[CONFIRMAR]`; tamanhos padrão quando o formulário não tem limite (resumo 900, por que contratar 1.000, o que espera 600, ponto forte 250, ponto a desenvolver 300, carta 1.500 caracteres).
 
 **E7-02 concluída (15/11/2026).** Skill rodada em 3 vagas já enviadas: Qive, Vetta (descrição do Indeed) e Unetvale (Sólides), esta no lugar da DOT Coordenação, finalizada pela DOT em 13/11/2026. Resultado: nenhum fato inventado; os requisitos da vaga que a ficha não confirma viraram pontos a desenvolver com `[CONFIRMAR]`. Diferenças com os currículos feitos à mão (percentuais derivados, certificações, ferramentas e frases copiadas da vaga que não estão na ficha) estão no relatório pessoal do Roberto, fora do repositório. Achados para a E5-03: (1) a nota de naturalidade das listas (pontos fortes e a desenvolver) fica baixa pelo formato paralelo e não deve ser critério; (2) o "O que espera da empresa" precisa das Preferências do app, que hoje não entram na adaptação; (3) defeito da E4-05 corrigido: item da lista "evitar" com termos entre aspas vale só pelos termos (o "como" deixava de ser apontado em todo texto).
+
+**E5-03 e E7-03 implementadas (15/11/2026).** `src/server/Adaptacao.ts` (`adaptarParaVaga`, `ultimaAdaptacao`) e o painel "Adaptar" em cada vaga.
+- **E7-03, fonte única:** `scripts/build.mjs` lê `skills/li-candidatura/SKILL.md`, tira o cabeçalho de metadados e gera `dist/SkillCandidatura.js` com a constante `SKILL_CANDIDATURA`. O prompt de sistema é esse texto mais um trecho curto "Neste app" (onde estão as entradas e o formato do JSON). Mudou uma regra: edite só o `SKILL.md`; o próximo build leva para o app. Um teste confere que o prompt começa com o texto exato do arquivo.
+- **Entradas:** a descrição da vaga (E5-02; sem ela, recusa), os itens confirmados da ficha, o tom, os proibidos e as Preferências (título, modalidade, UF, termos a excluir), tudo entre tags como dado. Esforço alto.
+- **Saída:** resumo, por que contratar, o que espera, até 5 pontos fortes, até 5 a desenvolver e a carta, nos limites padrão da skill (900, 1.000, 600, 250 e 300 por item, 1.500). Passou do limite ou veio fora do formato: nova tentativa; falhando de novo, erro e nada gravado. Limpeza com `limparTextoPT_` e nota de naturalidade só nos textos corridos (nas listas a nota não vale, achado da E7-02).
+- **Gravação:** cada geração grava uma versão nova por texto na aba `Textos`, com o `vaga_id`; nas listas, um item por linha e `limite_caracteres` é o de cada item. Limite de 10 adaptações por dia por candidato. Isolamento: a vaga precisa ser do candidato.
+- **Na página:** botão Adaptar abre o painel com a última versão (se houver), "Adaptar de novo", contagem de caracteres, `[CONFIRMAR]` em destaque, Copiar e a lista "Confira antes de enviar". O editor com salvar versão é a E5-04.
+- Fora desta entrega: escolha da versão de currículo e limite de formulário (E5-05), mensagem ao recrutador (E5-06).
+- Testes: `tests/adaptacao.test.js`; 205 casos passam. Sem aba nem coluna nova: não precisa de `setupAmbiente()`.
