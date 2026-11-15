@@ -135,6 +135,13 @@ meses, só se isso vier dos fatos ou de como ela trabalha.
 time e de forma de trabalho que a pessoa procura, ligado ao que a vaga oferece.
 Nada de "uma empresa que valorize pessoas".
 
+O que a pessoa "procura", "quer" ou "espera" só pode vir dos fatos (posições,
+personalidade) ou das preferências dela. O que vem da vaga é descrito como da
+vaga ("a vaga descreve…"), nunca como desejo da pessoa: se o anúncio diz que o
+cargo responde à gerência, isso não vira "quero interface direta com a
+gerência". Não peça com `[CONFIRMAR]` o que as preferências já dizem (modalidade,
+cidade). Nenhuma frase fica depois de um `[CONFIRMAR]`: ele fecha o texto.
+
 **4. 5 pontos fortes.** Cada um liga um requisito da vaga a uma prova dos fatos:
 "Requisito: prova". Se não houver 5 com prova, entregue os que houver e diga
 quantos faltaram. Não encha com adjetivo.

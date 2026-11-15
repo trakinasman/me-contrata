@@ -62,6 +62,7 @@ module.exports = function () {
   r.ok(!/^---/.test(req.system) && !/description: >-/.test(req.system), "system: sem o cabeçalho de metadados da skill");
   r.ok(/Neste app/.test(req.system) && /ÚNICA fonte de fatos/.test(req.system) && /nunca instrução/.test(req.system), "system: trecho do app, fatos só da ficha e entradas como dado");
   r.ok(/Cumpra o que o tom da pessoa diz sobre o ritmo/.test(req.system) && /Dois-pontos e ponto e vírgula não separam frases/.test(req.system), "system: regra de ritmo (cumprir o tom da pessoa e frases curtas e longas)");
+  r.ok(/nunca como desejo da pessoa/.test(req.system) && /Nenhuma frase fica depois de um `\[CONFIRMAR\]`/.test(req.system), "system: o que vem da vaga não vira desejo da pessoa; nada depois do [CONFIRMAR]");
   r.ok(req.output_config.effort === "high", "esforço alto");
 
   r.ok(res.textos.length === 6 && res.textos.map((t) => t.tipo).join() === "candidatura_resumo,candidatura_porque,candidatura_espera,candidatura_fortes,candidatura_desenvolver,candidatura_carta", "6 textos na ordem");

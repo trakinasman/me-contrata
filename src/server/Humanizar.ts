@@ -165,7 +165,8 @@ function avaliarTextoPT_(texto: string, evitar: string[] = []): AvaliacaoPT {
 
   // 1. Ritmo: gente varia muito o tamanho das frases; modelo escreve tudo igual.
   const tamanhos = frasesPT_(t).map((s) => s.split(/\s+/).length);
-  if (tamanhos.length < 4) {
+  // Menos de 6 frases é amostra pequena: com 4 ou 5, o "O que espera da empresa" tirava 9 a 14 em todas as gerações.
+  if (tamanhos.length < 6) {
     checagens.push({ id: "ritmo", nome: "Ritmo", nota: 50, detalhe: "texto curto demais para julgar" });
   } else {
     const media = tamanhos.reduce((a, b) => a + b, 0) / tamanhos.length;
