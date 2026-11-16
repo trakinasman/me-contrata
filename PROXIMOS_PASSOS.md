@@ -14,7 +14,7 @@ A Etapa 1 (base, login, sessão e LGPD) está concluída e testada. A **Etapa 2 
 | 2 — Ficha do candidato | **Em andamento** | E2-01 implementada e enviada ao Apps Script (`/dev`), falta testar a tela da ficha. Ver abaixo |
 | 3 — Agente gravando na planilha | Concluída | D2 decidido (catálogo + estado por candidato). E3-01 a E3-05 concluídas e testadas no ambiente real (12/11/2026) |
 | 4 — Perfil | Concluída | E4-01 a E4-06 concluídas e publicadas (E4-06 na versão @21, 14/11/2026). Nota do Roberto: 46 parcial para 76, completa |
-| 5 — Vagas | **Em andamento** | E5-01 publicada (@22 e @23). E5-02 (descrição) publicada (@24). E5-03 (adaptação por vaga) publicada, com ajustes depois do teste real (@27 a @34); E5-04 (editor) implementada em 15/11/2026, falta publicar |
+| 5 — Vagas | **Em andamento** | E5-01 publicada (@22 e @23). E5-02 (descrição) publicada (@24). E5-03 (adaptação por vaga) publicada, com ajustes depois do teste real (@27 a @34); E5-04 (editor) publicada em 15/11/2026 (@35); falta conferir na tela. Próximo: E5-05 (currículo em Google Doc e PDF) e E5-06 (mensagem ao recrutador) |
 | 6 — Funil | A fazer | Etapas e aba Eventos já definidas (E5-01); falta a tela com a linha do tempo e os números |
 | 7 — Skill `li-candidatura` | **Em andamento** | E7-01 aprovada pelo Roberto em 14/11/2026 (`skills/li-candidatura/SKILL.md`). E7-02 concluída em 15/11/2026 (Qive, Vetta e Unetvale): nenhum fato inventado. E7-03 (a skill embutida no build como prompt de `adaptarParaVaga()`) implementada em 15/11/2026, junto com a E5-03. Sobe para antes da E5-03 (achado D7) |
 | 8 — Piloto | A fazer | |
@@ -275,6 +275,67 @@ Perguntas a responder antes de integrar:
 - Filtros que as Preferências ainda não têm: país ou fuso aceito, idioma da vaga, forma de contratação (contractor, EOR, PJ) e moeda.
 - Nota: `ufs` e `cidades` só cobrem o Brasil, e quem não fala inglês perde 30 pontos em "exige idioma".
 
+## Para o futuro: aprender com a concorrência
+
+Registrado em 16/11/2026, sem etapa no plano ainda. Estudar sites parecidos com o me-contrata para decidir o que entra, o que fica de fora e como se diferenciar. Estudo inicial feito só pelas páginas públicas (números são alegações dos próprios sites).
+
+| Site | O que é | Preço divulgado | Observações |
+|---|---|---|---|
+| hire-international.com | Mentoria humana para carreira internacional (moeda forte) | Sem preço público; vendas por WhatsApp | Sem IA; mercado vizinho |
+| linkelyzer.com.br | IA que analisa o LinkedIn (nota 0 a 100, 39 critérios), gera CV, teste ATS, buscador de vagas, organizador de candidaturas, agenda de posts | 1 análise grátis; R$ 29,90 por 3 créditos; R$ 67/mês; R$ 49/mês no anual | O mais parecido com o nosso |
+| aiapply.co | Copiloto de candidatura: CV, carta por vaga, Auto Apply, preparação de entrevista | Plano grátis limitado, assinatura e créditos (valores não divulgados) | Compete por volume de candidaturas automáticas |
+| jobstep.io | IA com nota do currículo e teste ATS, vagas sugeridas por dia com índice de compatibilidade, adaptação de currículo e carta a cada vaga colada, painel de candidaturas | Grátis (nota, criação com IA, modelos, rastreio); trimestral e mensal pagos (valores não divulgados) | Suíça, dados na Europa, GDPR, AES-256; promete não treinar IA com seus dados nos planos pagos. Alega 120 mil usuários e 4,7 no Trustpilot (16/11/2026)
+
+Hipóteses para discutir (não são decisões):
+- O diferencial do me-contrata é a verdade (só fatos confirmados, `[CONFIRMAR]`, aprovação do usuário, LGPD). Não copiar o Auto Apply.
+- Eles têm e nós ainda não: teste ATS, preparação de entrevista, primeira análise grátis sem cartão.
+- Preço de referência no Brasil: cerca de R$ 30 por 3 análises e R$ 49 a 67 por mês.
+
+Etapa proposta, "como melhorar com a ajuda da concorrência": (1) páginas públicas (feito); (2) queixas reais de usuários (Reclame Aqui, Trustpilot, Reddit, lojas), com contagem e link de cada citação; (3) matriz de funcionalidades nossa e deles; (4) decisões para o plano. Onde encaixa: um olhar leve antes da E5-05 (teste ATS e modelos de CV) e da E5-07 (nota de aderência); o estudo principal antes da Etapa 8 (piloto: promessa da página, onboarding, preço); e a comparação com o feedback real depois do piloto.
+
+Queixas de usuários (16/11/2026, Trustpilot, amostra de 20 avaliações de 1 e 2 estrelas por site): nos dois sites com volume (AIApply e JobStep) a maioria é sobre **cobrança, cancelamento e reembolso**, depois vagas irrelevantes, resultados abaixo do prometido, suporte e expectativa (vender como busca de vagas o que é só currículo). Linkelyzer e Hire International sem avaliações independentes. Lições para o piloto, se um dia houver cobrança: preço claro, cancelar em um clique, teste sem paywall escondido, comprovante de cada candidatura, prometer só o que entrega, privacidade como diferencial. Detalhe e fontes na planilha dos concorrentes.
+
+Planilha dos concorrentes (16/11/2026): `me-contrata - concorrentes`, separada da planilha do app, aba `Concorrentes` (uma linha por site, com status indicado, lido ou revisado, queixas de usuários com link, o que aprender e o que evitar, decisão). Preenchida com os 4 sites acima e a RH+ Experts. Site novo: pesquisar (página pública e queixas) e registrar a linha; automatizar a leitura só se o volume justificar.
+
+Material de apoio: imagens e prints levantados pelo Roberto ficam em `prototipo/imagens_apoio/` (fora do Git; o `README.md` da pasta é o índice, com data, origem e finalidade de cada imagem).
+
+Perguntas em aberto: quais outros sites estudar; se teste ATS e preparação de entrevista entram no escopo; qual preço pretendido, ou se o uso é só próprio.
+
+## Para o futuro: produção em VPS com containers
+
+Registrado em 16/11/2026, sem etapa no plano ainda. A intenção do Roberto é que, em produção, o me-contrata rode numa **VPS, em containers**. O Apps Script e a planilha ficam como ambiente do piloto. Isso muda a pergunta sobre o banco: não é "planilha para Supabase", e sim "qual a arquitetura de produção". Migrar só os dados mantendo o Apps Script seria retrabalho, porque o servidor inteiro será portado.
+
+**O que se aproveita:** o servidor é TypeScript e a lógica é quase toda pura (humanizador, extração de descrições, prompts, validações, adaptação por vaga). O que é do Google precisa de substituto, e o simulador de testes (`tests/simulador.js`) já lista essas fronteiras.
+
+| Hoje (Apps Script) | Na VPS (a decidir) |
+|---|---|
+| Planilha | Postgres |
+| `LockService` | Transações |
+| `CacheService` (limites diários) | Tabela ou Redis |
+| E-mail do código de login (`MailApp`) | Provedor SMTP ou transacional |
+| Pasta no Drive | Volume ou armazenamento compatível com S3 |
+| Gatilhos de tempo | `cron` em container |
+| Propriedades do Script | Variáveis de ambiente e segredos do Docker |
+| `doPost` do agente com HMAC | Endpoint HTTP (o HMAC fica) |
+| Página servida pelo `HtmlService` | Arquivos estáticos do próprio app |
+
+Opções para os dados (levantamento inicial, ainda sem pesquisa de mercado):
+- **A. Supabase gerenciado:** sem operar o banco; Free comporta o piloto (500 MB; pausa após 1 semana sem atividade), Pro a partir de US$ 25/mês (8 GB, sem pausa); dependência de fornecedor e dados fora da VPS.
+- **B. Supabase hospedado na própria VPS:** painel, Auth, RLS e Storage, mas uma pilha com muitos containers e toda a operação por conta do Roberto.
+- **C. Postgres em container com API própria em TypeScript:** mais leve e com controle total; o RLS do Postgres funciona de verdade (a API conecta com papel limitado e informa o `usuario_id` por transação). Com o Supabase, a chave de servidor ignora o RLS e o isolamento continuaria dependendo do código.
+
+**Ponto em aberto (decisão do Roberto, 16/11/2026): fazer uma análise e uma pesquisa de mercado sobre a melhor forma de migrar o ambiente**, no formato que o projeto vem seguindo (levantamento com fontes, comparação, decisão registrada aqui). A pesquisar:
+- Provedores de VPS: preço, região no Brasil e latência, backup e suporte.
+- Banco: Postgres gerenciado, em container ou Supabase (A, B e C acima), com backup, restauração e custo total por mês.
+- Orquestração e publicação: Docker Compose ou uma plataforma de deploy autohospedada (Coolify, Dokploy e similares, a avaliar), proxy reverso e TLS.
+- E-mail transacional (login por código), armazenamento de arquivos, cron, segredos, monitoramento e alertas.
+- LGPD: onde ficam os dados, contrato com operador, exclusão e portabilidade.
+- Plano de migração dos dados e do corte (como mover o piloto sem perder usuários e consentimentos) e esforço do porte.
+
+Preparar agora, barato e útil em qualquer opção: concentrar o acesso a dados em funções de repositório (em vez de cada arquivo chamar `lerAba_`) e manter a lógica fora dos serviços do Google. A migração vem depois do piloto (Etapa 8), para não construir infraestrutura antes de validar o produto.
+
+Decisões que dependem do Roberto: quanto quer operar o banco, se a migração vem antes ou depois do piloto, domínio, provedor de e-mail e orçamento da VPS.
+
 ## Etapa 7 — Skill li-candidatura
 
 | ID | Entrega | Critério de aceite | Depende de |
@@ -295,5 +356,6 @@ Perguntas a responder antes de integrar:
 - **Na página:** botão Adaptar abre o painel com a última versão (se houver), "Adaptar de novo", contagem de caracteres, `[CONFIRMAR]` em destaque, Copiar e a lista "Confira antes de enviar". O editor com salvar versão é a E5-04.
 - Fora desta entrega: escolha da versão de currículo e limite de formulário (E5-05), mensagem ao recrutador (E5-06).
 - **Ajustes depois do teste real (Líder de NOC, Teltec, 15/11/2026; PRs #30 a #33):** o modelo varia muito de uma geração para outra (Ritmo de 1 a 93 com os mesmos dados). A skill passou a exigir o ritmo de frases do tom da pessoa; o Ritmo só é julgado com 6 frases ou mais e a checagem neutra (texto curto) fica fora da média; a skill proíbe transformar o que é da vaga em desejo da pessoa no "O que espera"; e, se um texto corrido com 6 frases ou mais vier com Ritmo abaixo de 40, o servidor faz uma segunda chamada avisando qual texto variar e fica com a de melhor ritmo (não conta no limite diário; se a segunda for inválida ou pior, mantém a primeira).
-- **E5-04 implementada (15/11/2026):** `salvarTextoAdaptado` grava a edição do candidato como versão nova na aba `Textos` (`editado_pelo_usuario` = verdadeiro), com o limite do tipo (por item nas listas, até 5 itens), sem passar pelo limpador (o texto é dele); sem mudança não grava; a anterior fica. Na página, cada texto tem Editar (contador ao vivo, bloqueia acima do limite), Salvar versão e Cancelar, e a etiqueta "editado por você". "Adaptar de novo" pergunta antes quando há edição, porque a versão nova esconde as edições (ficam no histórico). Fora desta entrega: voltar a uma versão anterior e limite próprio de cada formulário. 200 edições por dia por candidato.
+- **E5-04 publicada (15/11/2026, @35):** `salvarTextoAdaptado` grava a edição do candidato como versão nova na aba `Textos` (`editado_pelo_usuario` = verdadeiro), com o limite do tipo (por item nas listas, até 5 itens), sem passar pelo limpador (o texto é dele); sem mudança não grava; a anterior fica. Na página, cada texto tem Editar (contador ao vivo, bloqueia acima do limite), Salvar versão e Cancelar, e a etiqueta "editado por você". "Adaptar de novo" pergunta antes quando há edição, porque a versão nova esconde as edições (ficam no histórico). Fora desta entrega: voltar a uma versão anterior e limite próprio de cada formulário. 200 edições por dia por candidato.
+- **Estado em 15/11/2026 (fim do dia):** publicado até a versão @35. Pendências do Roberto: (1) conferir o editor na tela; (2) a propriedade do script `ADAPTACOES_POR_DIA` = `sem_limite` está ligada para os ajustes: apagar para voltar às 10 por dia; (3) revisar as tabelas de diferenças do relatório da E7-02 e confirmar na ficha o que for verdade; (4) apagar o projeto antigo do Apps Script (1FSBG). Para retomar: E5-05 (modelo de currículo em Google Doc, exportado em PDF de 2 páginas), depois E5-06, E5-07 e a Etapa 6 (tela do funil). Usar `/model opusplan` e começar pelo modo de planejamento.
 - Testes: `tests/adaptacao.test.js`; 222 casos passam no total. Sem aba nem coluna nova: não precisa de `setupAmbiente()`.
