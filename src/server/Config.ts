@@ -5,11 +5,15 @@ const PROP = {
   CLAUDE_API_KEY: "CLAUDE_API_KEY",
   AGENTE_SEGREDO: "AGENTE_SEGREDO",
   LOGIN_SEGREDO: "LOGIN_SEGREDO",
+  // Opcional: limite diário de avaliações de vaga por IA por candidato (número, ou sem_limite). Ausente = NOTA_VAGA.POR_DIA.
+  NOTAS_IA_POR_DIA: "NOTAS_IA_POR_DIA",
   // Opcional: limite diário de adaptações por candidato (número, ou sem_limite). Ausente = ADAPTACAO.POR_DIA.
   ADAPTACOES_POR_DIA: "ADAPTACOES_POR_DIA",
 } as const;
 
 const MODELO_IA = "claude-sonnet-5-5";
+// Modelo menor e mais barato, para tarefas de classificação e extração (E5-07: nota da vaga). Preço em IA.PRECOS_MTOK.
+const MODELO_IA_LEVE = "claude-haiku-5-5";
 
 // Funções terminadas em "_" são privadas no Apps Script: a página não
 // consegue chamá-las por google.script.run. Todo helper interno segue isso.

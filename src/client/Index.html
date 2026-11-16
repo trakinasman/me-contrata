@@ -351,12 +351,14 @@
             v.nova ? h("span", { class: "chip ok", title: "Quando o agente trouxe esta vaga" }, "chegou " + haQuantosDias(v.criadaEm)) : null,
             v.vigente ? null : h("span", { class: "chip", title: "O agente não traz esta vaga desde então: o anúncio pode ter fechado" },
               v.selecionadaEm ? "fora da busca " + haQuantosDias(v.selecionadaEm) : "fora da busca"),
-            h("span", { class: "chip " + classe, title: "Nota pelas suas preferências e listas" }, v.nota == null ? "sem nota" : "nota " + v.nota))),
+            h("span", { class: "chip " + classe, title: "Nota pelas suas preferências e listas" }, v.nota == null ? "sem nota" : "nota " + v.nota),
+            v.notaIa == null ? null : h("span", { class: "chip " + classeNotaIa(v.notaIa), title: "Nota por IA: encaixe com a sua ficha confirmada" }, "IA " + v.notaIa))),
         v.motivos.length ? h("div", { class: "small muted" }, "Por quê: " + v.motivos.join(" · ")) : null,
         descartando === v.vagaId ? formDescarte(v) : acoesVaga(v),
         descricaoAberta === v.vagaId ? painelDescricao(v) : null,
         adaptacaoAberta === v.vagaId ? painelAdaptacao(v) : null,
-        recrutadorAberto === v.vagaId ? painelRecrutador(v) : null);
+        recrutadorAberto === v.vagaId ? painelRecrutador(v) : null,
+        notaIaAberta === v.vagaId ? painelNotaIa(v) : null);
     }
 
     function acoesVaga(v) {
@@ -368,6 +370,8 @@
           adaptacaoAberta === v.vagaId ? "Fechar adaptação" : "Adaptar"),
         h("button", { class: "btn mini", type: "button", "aria-expanded": recrutadorAberto === v.vagaId ? "true" : "false", onclick: function () { alternarRecrutador(v); } },
           recrutadorAberto === v.vagaId ? "Fechar mensagens" : "Mensagem ao recrutador"),
+        h("button", { class: "btn mini", type: "button", "aria-expanded": notaIaAberta === v.vagaId ? "true" : "false", onclick: function () { alternarNotaIa(v); } },
+          notaIaAberta === v.vagaId ? "Fechar avaliação" : "Avaliar com IA"),
         v.noFunil ? h("span", { class: "chip ok" }, "no funil") :
           h("button", { class: "btn mini", type: "button", onclick: function (ev) { moverVaga(v, ev.target); } }, "Mover para o funil"),
         h("button", { class: "btn mini perigo", type: "button", onclick: function () { descartando = v.vagaId; desenharVagas(); } }, "Descartar"));
@@ -823,6 +827,81 @@
         if (e.r.conferir && e.r.conferir.length) {
           blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira antes de enviar:"),
             h("ul", {}, e.r.conferir.map(function (c) { return h("li", {}, c); }))));
+        }
+      }
+      return h("div", { class: "stack painel-descricao" }, blocos);
+    }
+
+    // ---------- Avaliação da vaga por IA (E5-07) ----------
+    // A nota é calculada pelo servidor a partir da lista de requisitos; a IA só classifica. Texto entra por textContent.
+    var notaIaAberta = null;
+    var notaIa = {};  // vagaId -> { estado: "carregando" | "vazio" | "gerando" | "ok", r, erro }
+    var ROTULO_IMPORTANCIA = { eliminatorio: "eliminatório", importante: "importante", diferencial: "diferencial" };
+    var ROTULO_SITUACAO = { atende: "atende", parcial: "em parte", nao_confirmado: "não confirmado" };
+    var CLASSE_SITUACAO = { atende: "ok", parcial: "warn", nao_confirmado: "bad" };
+
+    function classeNotaIa(n) { return n >= 70 ? "ok" : n >= 45 ? "warn" : "bad"; }
+
+    function alternarNotaIa(v) {
+      if (notaIaAberta === v.vagaId) { notaIaAberta = null; desenharVagas(); return; }
+      notaIaAberta = v.vagaId;
+      if (!notaIa[v.vagaId]) {
+        notaIa[v.vagaId] = { estado: "carregando" };
+        chamar("ultimaNotaIa", [tokenAtual, v.vagaId], function (r) {
+          notaIa[v.vagaId] = r ? { estado: "ok", r: r } : { estado: "vazio" };
+          desenharVagas();
+        }, function (msg) { notaIa[v.vagaId] = { estado: "vazio", erro: msg }; desenharVagas(); });
+      }
+      desenharVagas();
+    }
+
+    function avaliarComIA(v) {
+      var anterior = notaIa[v.vagaId] && notaIa[v.vagaId].r;
+      notaIa[v.vagaId] = { estado: "gerando", r: anterior };
+      desenharVagas();
+      chamar("avaliarVagaComIA", [tokenAtual, v.vagaId], function (r) {
+        notaIa[v.vagaId] = { estado: "ok", r: r };
+        v.notaIa = r.nota;
+        desenharVagas();
+      }, function (msg) {
+        notaIa[v.vagaId] = { estado: anterior ? "ok" : "vazio", r: anterior, erro: msg };
+        desenharVagas();
+      });
+    }
+
+    function painelNotaIa(v) {
+      var e = notaIa[v.vagaId] || { estado: "carregando" };
+      if (e.estado === "carregando") return h("div", { class: "painel-descricao" }, h("p", { class: "small muted" }, "Carregando…"));
+      var gerando = e.estado === "gerando";
+      var r = e.r;
+      var blocos = [
+        h("p", { class: "small muted" }, "Compara os requisitos da vaga com a sua ficha confirmada. A IA só classifica cada requisito; a nota é calculada pelo app com pesos fixos (eliminatório 3, importante 2, diferencial 1; atende 1, em parte 0,5, não confirmado 0). Não é promessa de contratação. Precisa da descrição da vaga salva e de a vaga estar acima da nota mínima das suas preferências."),
+        e.erro ? h("p", { class: "erro", role: "alert" }, e.erro) : null,
+        gerando ? h("p", { class: "small muted" }, "Avaliando…") : null,
+        h("div", { class: "row" },
+          h("button", { class: "btn mini prim", type: "button", disabled: gerando, onclick: function () { avaliarComIA(v); } }, r ? "Avaliar de novo" : "Avaliar com IA"))
+      ];
+      if (r) {
+        blocos.push(h("div", { class: "row" },
+          h("span", { class: "chip " + classeNotaIa(r.nota) }, "Nota IA " + r.nota),
+          r.eliminatoriosSemProva ? h("span", { class: "chip bad", title: "Requisitos que a vaga exige e a sua ficha não confirma" }, r.eliminatoriosSemProva + (r.eliminatoriosSemProva === 1 ? " eliminatório sem prova" : " eliminatórios sem prova")) : null,
+          h("span", { class: "small muted" }, "versão " + r.versao + " · modelo " + r.modelo)));
+        if (r.resumo) blocos.push(h("p", {}, r.resumo));
+        blocos.push(h("ul", { class: "requisitos-ia" }, r.requisitos.map(function (x) {
+          return h("li", {},
+            h("div", { class: "row" },
+              h("b", {}, x.texto), " ",
+              h("span", { class: "chip" }, ROTULO_IMPORTANCIA[x.importancia] || x.importancia), " ",
+              h("span", { class: "chip " + (CLASSE_SITUACAO[x.situacao] || "") }, ROTULO_SITUACAO[x.situacao] || x.situacao)),
+            x.observacao ? h("div", { class: "small" }, x.observacao) : null,
+            x.provas && x.provas.length ? h("details", { class: "small muted" }, h("summary", {}, "Item(ns) da ficha"),
+              x.provas.map(function (p) { return h("p", {}, p); })) : null);
+        })));
+        if (r.avisos && r.avisos.length) {
+          blocos.push(h("div", { class: "aviso" }, h("b", {}, "O servidor ajustou ou avisou:"), h("ul", {}, r.avisos.map(function (a) { return h("li", {}, a); }))));
+        }
+        if (r.conferir && r.conferir.length) {
+          blocos.push(h("div", { class: "aviso" }, h("b", {}, "Para melhorar o encaixe, confirme na ficha:"), h("ul", {}, r.conferir.map(function (c) { return h("li", {}, c); }))));
         }
       }
       return h("div", { class: "stack painel-descricao" }, blocos);

@@ -14,10 +14,16 @@ const IA = {
   VERSAO_API: "2026-10-21",
   BETA_FALLBACK: "server-side-fallback-2026-07-01",
   MAX_TOKENS: 16000,
-  // US$ por milhão de tokens do MODELO_IA (Claude Sonnet 5.5), só para a estimativa em Uso_IA.
-  PRECO_ENTRADA_MTOK: 2,
-  PRECO_SAIDA_MTOK: 10,
+  // US$ por milhão de tokens [entrada, saída], só para a estimativa em Uso_IA (tabela de preços da Anthropic, 16/11/2026, prompts de até
+  // 100 mil tokens). Modelo fora da tabela usa o preço do Sonnet, o mais alto daqui, para a estimativa não ficar abaixo do real.
+  PRECOS_MTOK: { "claude-sonnet-5-5": [2, 10], "claude-haiku-5-5": [0.1, 0.5] } as Record<string, number[]>,
+  PRECO_PADRAO_MTOK: [2, 10] as number[],
 } as const;
+
+function precoDoModelo_(modelo: string): number[] {
+  const chave = Object.keys(IA.PRECOS_MTOK).find((k) => modelo.indexOf(k) === 0);
+  return chave ? IA.PRECOS_MTOK[chave] : IA.PRECO_PADRAO_MTOK;
+}
 
 /**
  * Chama o modelo e devolve o JSON da resposta já interpretado.
@@ -30,9 +36,10 @@ function chamarIAJson_(
   conteudo: string | object[],
   schema: object,
   esforco: "low" | "medium" | "high" = "medium",
+  modelo: string = MODELO_IA,
 ): unknown {
   const corpo = {
-    model: MODELO_IA,
+    model: modelo,
     max_tokens: IA.MAX_TOKENS,
     system,
     messages: [{ role: "user", content: conteudo }],
@@ -92,7 +99,8 @@ function registrarUsoIA_(
 ): void {
   const entrada = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
   const saida = u.output_tokens || 0;
-  const custo = (entrada * IA.PRECO_ENTRADA_MTOK + saida * IA.PRECO_SAIDA_MTOK) / 1e6;
+  const [precoEntrada, precoSaida] = precoDoModelo_(modelo);
+  const custo = (entrada * precoEntrada + saida * precoSaida) / 1e6;
   try {
     anexarLinha_("Uso_IA", {
       usuario_id: usuarioId, funcao, modelo, tokens_entrada: entrada, tokens_saida: saida,

@@ -105,14 +105,17 @@ function criarAmbiente({ dono = "dono@teste.local" } = {}) {
           if (!pg) throw new Error("URL inesperada no teste: " + url);
           return { getResponseCode: () => pg.codigo ?? 200, getContentText: () => pg.html ?? "" };
         }
-        chamadasIA.push(JSON.parse(opt.payload));
+        const corpoIA = JSON.parse(opt.payload);
+        chamadasIA.push(corpoIA);
         if (!respostasIA.length) throw new Error("Teste sem resposta da IA na fila");
         const r = respostasIA.shift();
+        // { __http: 400 } na fila simula a API recusando o pedido (modelo ou parâmetro).
+        if (r && r.__http) return { getResponseCode: () => r.__http, getContentText: () => JSON.stringify({ error: { type: "invalid_request_error" } }) };
         return {
           getResponseCode: () => 200,
           getContentText: () => JSON.stringify({
-            model: "modelo-de-teste", stop_reason: "end_turn",
-            usage: { input_tokens: 100, output_tokens: 50 },
+            model: corpoIA.model || "modelo-de-teste", stop_reason: "end_turn",
+            usage: { input_tokens: r && r.__tokens ? r.__tokens[0] : 100, output_tokens: r && r.__tokens ? r.__tokens[1] : 50 },
             content: [{ type: "text", text: JSON.stringify(r) }],
           }),
         };
