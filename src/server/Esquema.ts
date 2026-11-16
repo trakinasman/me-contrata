@@ -47,7 +47,9 @@ const LISTAS: Record<string, string[]> = {
   // Etapas do funil, na ordem (decididas pelo Roberto em 14/11/2026). Recusado e desisti podem
   // vir de qualquer etapa. "Aguardando" não é etapa: é o tempo parado desde o último evento.
   status_candidatura: ["inserida", "curriculo_enviado", "entrevista_ia", "entrevista_rh", "entrevista_gestor", "proposta", "contratado", "recusado", "desisti"],
-  tipo_evento: ["inserida", "curriculo_enviado", "entrevista_ia", "entrevista_rh", "entrevista_gestor", "proposta", "contratado", "recusado", "desisti", "descartada"],
+  // Etapas do funil, descarte e o envio de cada mensagem ao recrutador (E5-06 registrada no funil, Etapa 6).
+  tipo_evento: ["inserida", "curriculo_enviado", "entrevista_ia", "entrevista_rh", "entrevista_gestor", "proposta", "contratado", "recusado", "desisti", "descartada",
+    "mensagem_convite", "mensagem_primeira", "mensagem_cobranca1", "mensagem_cobranca2"],
   status_recomendacao: ["pedido", "recebida", "aprovada"],
   tipo_curriculo: ["base", "linkedin", "adaptado"],
   modalidade: ["remoto", "hibrido", "presencial"],
