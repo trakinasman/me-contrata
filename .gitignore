@@ -5,3 +5,7 @@ dist/
 *.log
 .env
 *_local.json
+
+# Imagens de apoio (prints de concorrentes, perfis e vagas): podem ter dados pessoais e direito autoral. Só o índice vai para o Git.
+prototipo/imagens_apoio/*
+!prototipo/imagens_apoio/README.md
