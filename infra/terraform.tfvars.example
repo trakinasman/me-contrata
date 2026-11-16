@@ -1,0 +1,10 @@
+# Copie para terraform.tfvars (que não vai para o Git) e preencha.
+compartimento_ocid = "ocid1.compartment.oc1..XXXXXXXX"
+chave_ssh_publica  = "C:/Users/SEU_USUARIO/.ssh/oci_me_contrata.pub"
+cidrs_ssh          = ["SEU.IP.PUBLICO.AQUI/32"]
+
+# Opcionais (os valores abaixo são os padrões e os máximos do Always Free):
+# ocpus        = 2
+# memoria_gb   = 12
+# disco_gb     = 100
+# ip_reservado = true

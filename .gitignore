@@ -9,3 +9,11 @@ dist/
 # Imagens de apoio (prints de concorrentes, perfis e vagas): podem ter dados pessoais e direito autoral. Só o índice vai para o Git.
 prototipo/imagens_apoio/*
 !prototipo/imagens_apoio/README.md
+
+# Terraform (infra/): estado, plano e variáveis locais ficam fora do Git. O .terraform.lock.hcl vai para o Git.
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfplan
+infra/terraform.tfvars
+infra/crash.log
