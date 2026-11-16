@@ -275,6 +275,20 @@ Perguntas a responder antes de integrar:
 - Filtros que as Preferências ainda não têm: país ou fuso aceito, idioma da vaga, forma de contratação (contractor, EOR, PJ) e moeda.
 - Nota: `ufs` e `cidades` só cobrem o Brasil, e quem não fala inglês perde 30 pontos em "exige idioma".
 
+## Para o futuro: novas fontes de vagas e de avaliação de empresas (Brasil)
+
+Registrado em 16/11/2026, sem etapa no plano ainda. Origem: a lista de 12 sites de emprego de um post do Instagram (`prototipo/imagens_apoio/`). O agente hoje cobre Gupy, InfoJobs, Catho, Sólides, InHire, Michael Page e as empresas-alvo. Decisão do Roberto: o **Glassdoor** entra com **dois papéis**, fonte de **vagas** e fonte de **avaliação de empresas** (cultura, salário, entrevista), esta podendo alimentar uma nota da empresa no cartão da vaga e a preparação para entrevista.
+
+| Site | Papel | Situação | Observações (16/11/2026) |
+|---|---|---|---|
+| glassdoor.com.br | Vagas e avaliação de empresas | Indicado; primeira leitura feita | A página inicial recusa a leitura automática (403). O `robots.txt` bloqueia caminhos de vagas (`/job-listing`, `/jobview`, `/Vagas/*_P*`), `/api/`, `/search/` e a paginação de avaliações e salários, e restringe ClaudeBot e GPTBot a `/blog/`, `/About/` e `/empresas/`. Não se achou API pública oficial (fontes secundárias dizem que as parcerias acabaram) e guias dizem que os termos restringem o acesso automatizado; texto oficial dos termos não conferido |
+| vagas.com.br | Vagas | Indicado, não lido | |
+| indeed (br.indeed.com) | Vagas e dados de empresa | Indicado, não lido | Na sessão do Claude Code existe um conector do Indeed (busca de vagas, detalhes, dados da empresa), mas o app (Apps Script ou VPS) não o usa; para o app, a forma de acesso é a pesquisar |
+
+Conclusões iniciais, a validar: coletar o Glassdoor automaticamente é de **alto risco** (termos, bloqueios e restrição a robôs de IA); não coletar nem contornar bloqueio. Caminhos legítimos a avaliar: (1) o candidato **cola** o texto da avaliação da empresa ou o resumo (como já se cola a descrição da vaga na E5-02), e a IA usa como dado; (2) pedir autorização por escrito ou parceria de dados; (3) usar uma fonte oficial com API, se houver. Conferir o texto atual dos termos de uso antes de qualquer decisão, e consultar advogado para uso comercial.
+
+Perguntas em aberto: como cada site entrega vagas e dados de empresa (API, JSON na página, HTML ou só login); o que os termos permitem; se a nota da empresa entra na nota da vaga (E5-07) ou só como informação; se Vagas.com e Indeed valem o custo de integração.
+
 ## Para o futuro: aprender com a concorrência
 
 Registrado em 16/11/2026, sem etapa no plano ainda. Estudar sites parecidos com o me-contrata para decidir o que entra, o que fica de fora e como se diferenciar. Estudo inicial feito só pelas páginas públicas (números são alegações dos próprios sites).
