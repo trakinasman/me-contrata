@@ -115,6 +115,15 @@ module.exports = function () {
   r.ok(/Competências<\/h2><p>ITIL, Scrum<\/p>/.test(html2), "competência fora da ficha e repetida saem");
   r.ok(abas.Textos.d.filter((l) => l[1] === "usr-A" && l[3] === "candidatura_curriculo").length === 2 && rr.versao === 2, "segunda geração: versão 2");
 
+  // ---- Tópico acima do limite sai inteiro, não cortado no meio ----
+  const comLongo = ok();
+  comLongo.experiencias[0].topicos.push(topico("Remodelação do datacenter " + "x".repeat(240) + " seguindo EIA/TIA-568-B e NR35.", ["F6"]));
+  respostasIA.push(comLongo);
+  const rl = ctx.gerarCurriculoPdf(A, "v:1");
+  const htmlLongo = ctx.__ultimoHtml;
+  r.ok(!/xxxxxxxxxx|EIA\/TIA-56\b/.test(htmlLongo) && /Elevou o cumprimento de SLA de 35% para 70%/.test(htmlLongo), "tópico acima de 240 caracteres sai inteiro (não é cortado no meio) e os outros ficam");
+  r.ok(/1 item\(ns\) de tópicos de Quantum13 passaram de 240 caracteres e saíram: divida em dois tópicos/.test(rl.avisos.join(" ")), "aviso diz quantos tópicos passaram do limite");
+
   // ---- Resposta sem experiência válida: nova tentativa ----
   const vazio = ok();
   vazio.experiencias = [{ empresa: "Nada Disso", cargo: "X", periodo: "", fonte: ["F4"], topicos: [] }];
