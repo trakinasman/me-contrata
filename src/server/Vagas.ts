@@ -115,10 +115,10 @@ function moverParaFunil(token: string, vagaId: unknown): { noFunil: boolean } {
 // ---------- Uso interno ----------
 
 /** Um acontecimento na linha do tempo da vaga (aba Eventos). */
-function registrarEvento_(usuarioId: string, vagaId: string, tipo: string, detalhe: string): void {
+function registrarEvento_(usuarioId: string, vagaId: string, tipo: string, detalhe: string, em: Date = new Date()): void {
   if (!LISTAS.tipo_evento.includes(tipo)) throw new Error("Tipo de evento inválido: " + tipo);
   anexarLinha_("Eventos", {
-    evento_id: Utilities.getUuid(), usuario_id: usuarioId, vaga_id: vagaId, tipo, detalhe, em: new Date(),
+    evento_id: Utilities.getUuid(), usuario_id: usuarioId, vaga_id: vagaId, tipo, detalhe, em,
   });
 }
 

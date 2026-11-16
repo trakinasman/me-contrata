@@ -105,6 +105,17 @@
         <div id="lista-vagas" class="stack"><p class="muted small">Carregando…</p></div>
       </section>
 
+      <section id="pag-funil" class="stack" hidden>
+        <div class="row entre">
+          <h1>Funil</h1>
+          <span class="small muted" id="resumo-funil"></span>
+        </div>
+        <p class="muted small">Acompanhe cada candidatura, da inserida ao contratado. Registre cada acontecimento com a data em que ele ocorreu: os números abaixo saem dessas datas. Com menos de 3 casos, a conta vem marcada como "poucos dados".</p>
+        <div id="numeros-funil" class="card"></div>
+        <p id="erro-funil" class="erro" role="alert"></p>
+        <div id="lista-funil" class="stack"><p class="muted small">Carregando…</p></div>
+      </section>
+
       <section id="pag-embreve" hidden>
         <div class="card"><p class="muted">Esta tela chega nas próximas etapas.</p></div>
       </section>
@@ -907,6 +918,157 @@
       return h("div", { class: "stack painel-descricao" }, blocos);
     }
 
+    // ---------- Funil (Etapa 6) ----------
+    // Tudo vem do servidor já calculado; texto de vaga e observações entram por textContent (h()).
+    var funil = null;
+    var funilAberto = null;
+    var NOME_EVENTO = {
+      inserida: "Inserida no funil", curriculo_enviado: "Currículo enviado", entrevista_ia: "Entrevista com IA", entrevista_rh: "Entrevista com RH",
+      entrevista_gestor: "Entrevista com gestor", proposta: "Proposta", contratado: "Contratado", recusado: "Recusado", desisti: "Desisti",
+      descartada: "Descartada", mensagem_convite: "Convite de conexão enviado", mensagem_primeira: "Primeira mensagem enviada",
+      mensagem_cobranca1: "Primeira cobrança enviada", mensagem_cobranca2: "Segunda cobrança enviada"
+    };
+    var TIPOS_MENSAGEM_FUNIL = [["convite", "Convite de conexão"], ["primeira", "Primeira mensagem"], ["cobranca1", "Primeira cobrança"], ["cobranca2", "Segunda cobrança"]];
+
+    function hojeIso() {
+      var d = new Date();
+      return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+    }
+
+    function dataCurta(iso) {
+      var d = new Date(iso);
+      return isNaN(d) ? "" : d.toLocaleDateString("pt-BR");
+    }
+
+    function carregarFunil() {
+      el("erro-funil").textContent = "";
+      el("lista-funil").replaceChildren(h("p", { class: "muted small" }, "Carregando…"));
+      chamar("funilDoCandidato", [tokenAtual], function (r) { funil = r; desenharFunil(); }, function (msg) {
+        el("lista-funil").replaceChildren(h("p", { class: "erro" }, msg),
+          h("button", { class: "btn mini", type: "button", onclick: carregarFunil }, "Tentar de novo"));
+      });
+    }
+
+    // Executa uma ação do servidor que devolve o funil atualizado.
+    function acaoFunil(funcao, args, depois) {
+      el("erro-funil").textContent = "";
+      chamar(funcao, [tokenAtual].concat(args), function (r) {
+        funil = r;
+        if (depois) depois();
+        desenharFunil();
+      }, function (msg) { el("erro-funil").textContent = msg; });
+    }
+
+    function percentual(n, poucos) { return n === null ? "" : n + "%" + (poucos ? " (poucos dados)" : ""); }
+
+    function painelNumerosFunil(n) {
+      if (!n.total) return h("p", { class: "muted small" }, "Ainda não há vagas no funil. Em Vagas, use o botão para mover uma vaga para o funil.");
+      var linhasEtapas = n.etapas.filter(function (e) { return e.chegaram > 0; }).map(function (e) {
+        return h("li", {}, h("b", {}, e.nome + ": "), e.chegaram + (e.taxa === null ? "" : " (" + percentual(e.taxa, e.poucosDados) + " da etapa anterior)"));
+      });
+      var blocos = [
+        h("p", {}, h("b", {}, n.ativas + " ativas"), " de " + n.total + " no funil."),
+        h("p", { class: "small muted" }, "Quantas chegaram a cada etapa:"),
+        h("ul", {}, linhasEtapas)
+      ];
+      if (n.tempos.length) {
+        blocos.push(h("p", { class: "small muted" }, "Tempo médio até a próxima etapa:"));
+        blocos.push(h("ul", {}, n.tempos.map(function (t) {
+          return h("li", {}, t.nome + ": " + String(t.dias).replace(".", ",") + " dias (" + t.casos + (t.casos === 1 ? " caso" : " casos") + (t.poucosDados ? ", poucos dados" : "") + ")");
+        })));
+      }
+      if (n.paradas.length) {
+        blocos.push(h("p", { class: "small muted" }, "Onde as vagas pararam:"));
+        blocos.push(h("ul", {}, n.paradas.map(function (p) {
+          var partes = [];
+          if (p.recusadas) partes.push(p.recusadas + (p.recusadas === 1 ? " recusa" : " recusas"));
+          if (p.desistencias) partes.push(p.desistencias + (p.desistencias === 1 ? " desistência" : " desistências"));
+          return h("li", {}, p.nome + ": " + partes.join(" e "));
+        })));
+      }
+      if (n.origens.length) {
+        blocos.push(h("p", { class: "small muted" }, "De onde vêm as vagas que avançam (enviadas e as que chegaram a uma entrevista):"));
+        blocos.push(h("ul", {}, n.origens.map(function (o) {
+          return h("li", {}, o.fonte + ": " + o.enviadas + " enviadas, " + o.avancaram + " avançaram" + (o.poucosDados ? " (poucos dados)" : ""));
+        })));
+      }
+      return h("div", { class: "stack" }, blocos);
+    }
+
+    function linhaDoTempo(c) {
+      if (!c.eventos.length) return h("p", { class: "small muted" }, "Sem eventos.");
+      return h("ol", { class: "small" }, c.eventos.map(function (e) {
+        var detalhe = String(e.detalhe || "").replace(/^parou_em=([a-z_]+)/, function (_, et) { return "parou em: " + (NOME_EVENTO[et] || et); });
+        return h("li", {}, dataCurta(e.em) + " · " + (NOME_EVENTO[e.tipo] || e.tipo) + (detalhe ? " (" + detalhe + ")" : ""));
+      }));
+    }
+
+    function painelAcoesFunil(c) {
+      var etapa = h("select", { "aria-label": "Nova etapa" }, funil.etapas.filter(function (e) { return e.id !== c.status; }).map(function (e) { return h("option", { value: e.id }, e.nome); }));
+      var data = h("input", { type: "date", max: hojeIso(), value: hojeIso(), "aria-label": "Data do acontecimento" });
+      var detalhe = h("input", { type: "text", maxlength: "200", placeholder: "Observação (opcional): motivo da recusa, quem entrevistou…", "aria-label": "Observação" });
+      var canal = h("select", { "aria-label": "Canal do envio" }, [h("option", { value: "" }, "Canal (opcional)")].concat(funil.canais.map(function (x) { return h("option", { value: x }, x); })));
+      var cv = h("select", { "aria-label": "Currículo enviado" }, [h("option", { value: "" }, "Currículo usado (opcional)")].concat(c.curriculos.map(function (x) {
+        return h("option", { value: x.id }, "PDF de " + dataCurta(x.criadoEm) + (x.paginas ? ", " + x.paginas + " pág." : ""));
+      })));
+      var extras = h("div", { class: "row" }, canal, cv);
+      function ajustar() { extras.hidden = etapa.value !== "curriculo_enviado"; }
+      etapa.addEventListener("change", ajustar);
+      ajustar();
+
+      var tipoMsg = h("select", { "aria-label": "Mensagem enviada" }, TIPOS_MENSAGEM_FUNIL.map(function (t) { return h("option", { value: t[0] }, t[1]); }));
+      var dataMsg = h("input", { type: "date", max: hojeIso(), value: hojeIso(), "aria-label": "Data do envio da mensagem" });
+      var dataCob = h("input", { type: "date", min: hojeIso(), value: c.proximaCobranca ? c.proximaCobranca.slice(0, 10) : "", "aria-label": "Data da próxima cobrança" });
+
+      return h("div", { class: "stack" },
+        h("b", {}, "Mudar de etapa"),
+        h("div", { class: "row" }, etapa, data),
+        extras, detalhe,
+        h("div", { class: "row" }, h("button", { class: "btn mini prim", type: "button", onclick: function () {
+          acaoFunil("mudarEtapa", [c.vagaId, etapa.value, { data: data.value, detalhe: detalhe.value, canal: canal.value, cvUsado: cv.value }]);
+        } }, "Registrar")),
+        h("b", {}, "Mensagem ao recrutador enviada"),
+        h("div", { class: "row" }, tipoMsg, dataMsg,
+          h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("registrarMensagemEnviada", [c.vagaId, tipoMsg.value, dataMsg.value]); } }, "Registrar envio")),
+        h("b", {}, "Próxima cobrança"),
+        h("div", { class: "row" }, dataCob,
+          h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("definirProximaCobranca", [c.vagaId, dataCob.value]); } }, dataCob.value ? "Salvar data" : "Definir data"),
+          h("button", { class: "btn mini", type: "button", onclick: function () { dataCob.value = ""; acaoFunil("definirProximaCobranca", [c.vagaId, ""]); } }, "Limpar")),
+        h("b", {}, "Linha do tempo"),
+        linhaDoTempo(c));
+    }
+
+    function cartaoFunil(c) {
+      var aberto = funilAberto === c.vagaId;
+      return h("div", { class: "card stack" },
+        h("div", { class: "row entre" },
+          h("div", {}, h("b", {}, c.titulo), " ", h("span", { class: "small muted" }, c.empresa + (c.fonte ? " · " + c.fonte : ""))),
+          h("span", { class: "small muted" }, c.diasParado === 0 ? "hoje" : "há " + c.diasParado + (c.diasParado === 1 ? " dia" : " dias"))),
+        c.alerta ? h("div", { class: "row" }, h("span", { class: "chip warn" }, c.motivoAlerta)) : null,
+        c.canal ? h("span", { class: "small muted" }, "Canal: " + c.canal) : null,
+        h("div", { class: "row" },
+          c.link ? h("a", { class: "btn mini", href: c.link, target: "_blank", rel: "noopener noreferrer" }, "Abrir anúncio") : null,
+          h("button", { class: "btn mini", type: "button", "aria-expanded": aberto ? "true" : "false", onclick: function () { funilAberto = aberto ? null : c.vagaId; desenharFunil(); } },
+            aberto ? "Fechar" : "Detalhes e ações")),
+        aberto ? h("div", { class: "painel-descricao" }, painelAcoesFunil(c)) : null);
+    }
+
+    function desenharFunil() {
+      if (!funil) return;
+      var blocos = [];
+      funil.etapas.forEach(function (e) {
+        var itens = funil.candidaturas.filter(function (c) { return c.status === e.id; });
+        if (!itens.length) return;
+        blocos.push(h("h2", {}, e.nome + " (" + itens.length + ")"));
+        itens.forEach(function (c) { blocos.push(cartaoFunil(c)); });
+      });
+      if (!blocos.length) blocos.push(h("p", { class: "muted small" }, "Nenhuma vaga no funil ainda."));
+      el("numeros-funil").replaceChildren(painelNumerosFunil(funil.numeros));
+      el("lista-funil").replaceChildren.apply(el("lista-funil"), blocos);
+      var alertas = funil.candidaturas.filter(function (c) { return c.alerta; }).length;
+      el("resumo-funil").textContent = alertas ? alertas + (alertas === 1 ? " vaga pede atenção" : " vagas pedem atenção") : "";
+    }
+
     var timerVagas = null;
     function avisarVagas(texto) {
       el("msg-vagas").textContent = texto;
@@ -923,7 +1085,7 @@
     // "#perfil" levaria a janela inteira para o endereço do iframe (tela branca).
     // Por isso os links internos são interceptados e a rota fica em rotaAtual;
     // google.script.history atualiza o endereço da janela e o botão Voltar.
-    var PAGINAS = ["inicio", "embreve", "perfil", "vagas"];
+    var PAGINAS = ["inicio", "embreve", "perfil", "vagas", "funil"];
     var rotaAtual = "";
     function irPara(rota) {
       rotaAtual = rota;
@@ -954,6 +1116,7 @@
         a.classList.toggle("ativo", a.getAttribute("data-pag") === pag);
       });
       if (visivel === "vagas" && !vagas) carregarVagas();
+      if (visivel === "funil") carregarFunil();
       if (visivel !== "perfil") return;
       var aba = ["dados", "curriculo"].indexOf(partes[1]) >= 0 ? partes[1] : "ficha";
       el("aba-ficha").hidden = aba !== "ficha";
