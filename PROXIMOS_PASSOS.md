@@ -293,6 +293,8 @@ Hipóteses para discutir (não são decisões):
 
 Etapa proposta, "como melhorar com a ajuda da concorrência": (1) páginas públicas (feito); (2) queixas reais de usuários (Reclame Aqui, Trustpilot, Reddit, lojas), com contagem e link de cada citação; (3) matriz de funcionalidades nossa e deles; (4) decisões para o plano. Onde encaixa: um olhar leve antes da E5-05 (teste ATS e modelos de CV) e da E5-07 (nota de aderência); o estudo principal antes da Etapa 8 (piloto: promessa da página, onboarding, preço); e a comparação com o feedback real depois do piloto.
 
+Planilha dos concorrentes (16/11/2026): `me-contrata - concorrentes`, separada da planilha do app, aba `Concorrentes` (uma linha por site, com status indicado, lido ou revisado, queixas de usuários com link, o que aprender e o que evitar, decisão). Preenchida com os 4 sites acima e a RH+ Experts. Site novo: pesquisar (página pública e queixas) e registrar a linha; automatizar a leitura só se o volume justificar.
+
 Material de apoio: imagens e prints levantados pelo Roberto ficam em `prototipo/imagens_apoio/` (fora do Git; o `README.md` da pasta é o índice, com data, origem e finalidade de cada imagem).
 
 Perguntas em aberto: quais outros sites estudar; se teste ATS e preparação de entrevista entram no escopo; qual preço pretendido, ou se o uso é só próprio.
