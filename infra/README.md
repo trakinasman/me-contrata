@@ -7,7 +7,7 @@ Cria, no compartimento `me-contrata-teste` da região `sa-saopaulo-1`, o ambient
 |---|---|
 | VCN, internet gateway, tabela de rotas, lista de segurança, sub-rede pública | A rede. Entrada: SSH só dos IPs informados, 80 e 443 para todos |
 | Instância `me-contrata-teste` | VM Arm (`VM.Standard.A1.Flex`), 2 OCPUs, 12 GB, disco de 100 GB, Ubuntu 24.04 aarch64 |
-| IP público reservado | O endereço não muda se a VM for recriada; é o que vai no registro A do DuckDNS |
+| IP público | Efêmero, o padrão da VM: só muda se a VM for recriada (o DuckDNS acompanha; basta atualizar o registro A). Há a opção `ip_reservado = true`, desligada por padrão, porque o custo do IP reservado não foi confirmado |
 
 Tudo dentro dos limites do **Always Free** (as variáveis têm validação que recusa passar de 2 OCPUs, 12 GB e 200 GB de disco).
 No **Free Trial**, o que passa desses limites gasta o crédito.

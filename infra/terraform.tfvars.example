@@ -7,4 +7,4 @@ cidrs_ssh          = ["SEU.IP.PUBLICO.AQUI/32"]
 # ocpus        = 2
 # memoria_gb   = 12
 # disco_gb     = 100
-# ip_reservado = true
+# ip_reservado = false   # true cria um IP reservado (custo não confirmado)

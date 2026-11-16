@@ -57,7 +57,7 @@ variable "disco_gb" {
 }
 
 variable "ip_reservado" {
-  description = "Cria um IP público reservado (não muda se a VM for recriada). Se falso, usa o IP efêmero da VM."
+  description = "Cria um IP público reservado (não muda se a VM for recriada; custo não confirmado). Padrão falso: IP efêmero da VM, que só muda se a VM for recriada. O DuckDNS acompanha a mudança."
   type        = bool
-  default     = true
+  default     = false
 }
