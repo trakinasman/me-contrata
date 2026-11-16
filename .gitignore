@@ -17,3 +17,8 @@ infra/*.tfstate.*
 infra/*.tfplan
 infra/terraform.tfvars
 infra/crash.log
+infra/tentativas.log
+infra/parar.flag
+infra/vm-criada.flag
+infra/.tentativas.trava
+infra/.plano.txt
