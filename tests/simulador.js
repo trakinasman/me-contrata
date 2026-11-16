@@ -91,8 +91,14 @@ function criarAmbiente({ dono = "dono@teste.local" } = {}) {
         },
       },
     },
+    ScriptApp: { getOAuthToken: () => "token-de-teste" },
     UrlFetchApp: {
       fetch: (url, opt) => {
+        const arq = /googleapis\.com\/drive\/v3\/files\/([^?/]+)\?alt=media/.exec(url);
+        if (arq) {
+          const f = drive.get(arq[1]);
+          return { getResponseCode: () => (f ? 200 : 404), getBlob: () => f.blob, getContentText: () => "" };
+        }
         if (!/api\.anthropic\.com/.test(url)) {
           buscas.push(url);
           const pg = paginas[url];
@@ -117,10 +123,35 @@ function criarAmbiente({ dono = "dono@teste.local" } = {}) {
       computeHmacSha256Signature: (t, k) =>
         [...crypto.createHmac("sha256", k).update(t).digest()].map((b) => (b > 127 ? b - 256 : b)),
       base64Decode: (s) => [...Buffer.from(s, "base64")].map((b) => (b > 127 ? b - 256 : b)),
-      newBlob: (bytes, mime, nome) => ({ bytes, mime, nome }),
+      base64Encode: (bytes) => Buffer.from(bytes.map((b) => b & 255)).toString("base64"),
+      newBlob: (dados, mime, nome) => criarBlob(dados, mime, nome),
       formatDate: (d, _tz, padrao) => formatarData(d, padrao),
     },
   };
+
+  /** Blob de teste: bytes ou texto; getAs(PDF) devolve um PDF falso com uma "/Type /Page" por bloco de texto. */
+  function criarBlob(dados, mime, nome) {
+    const buf = typeof dados === "string" ? Buffer.from(dados, "utf8") : Buffer.from(dados.map((b) => b & 255));
+    const blob = {
+      bytes: dados, mime, nome,
+      getBytes: () => [...buf].map((b) => (b > 127 ? b - 256 : b)),
+      getDataAsString: (cs) => buf.toString(/latin1|iso/i.test(cs || "") ? "latin1" : "utf8"),
+      getContentType: () => mime,
+      getName: () => blob.nome,
+      setName(n) { blob.nome = n; return blob; },
+      getAs(m) {
+        if (m !== "application/pdf") throw new Error("conversão não simulada: " + m);
+        const html = buf.toString("utf8");
+        ctx.__ultimoHtml = html;
+        const texto = html.replace(new RegExp("<style[^>]*>[^]*?</style>", "g"), " ").replace(new RegExp("<[^>]*>", "g"), " ").replace(new RegExp("\\s+", "g"), " ");
+        const paginas = Math.max(1, Math.ceil(texto.length / (ctx.__caracteresPorPagina ?? 3600)));
+        const limpo = texto.split("(").join(" ").split(")").join(" ").split("\\").join(" ");
+        const pdf = "%PDF-1.4\n/MediaBox [0 0 " + (ctx.__larguraPdf ?? 595) + " 842]\n" + "/Type /Page\n".repeat(paginas) + "BT (" + limpo + ") ET\n%%EOF";
+        return criarBlob(pdf, "application/pdf", "curriculo.pdf");
+      },
+    };
+    return blob;
+  }
 
   vm.createContext(ctx);
   for (const f of fs.readdirSync(DIST).filter((f) => f.endsWith(".js")).sort()) {

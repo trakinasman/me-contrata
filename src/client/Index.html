@@ -504,6 +504,7 @@
         chamar("ultimaAdaptacao", [tokenAtual, v.vagaId], function (a) {
           adaptacoes[v.vagaId] = a.textos.length ? { estado: "ok", a: a } : { estado: "vazia" };
           desenharVagas();
+          if (a.textos.length) carregarUltimoCurriculo(v);
         }, function (msg) { adaptacoes[v.vagaId] = { estado: "vazia", erro: msg }; desenharVagas(); });
       }
       desenharVagas();
@@ -621,6 +622,80 @@
           aviso));
     }
 
+    // ---------- Currículo em PDF (E5-05) ----------
+    // O PDF chega em base64 (o arquivo no Drive é do dono do app, o candidato não tem link). Textos entram por textContent.
+    var cvPdf = {};  // vagaId -> { estado: "vazio" | "gerando" | "ok", r, erro }
+
+    function carregarUltimoCurriculo(v) {
+      chamar("ultimoCurriculoPdf", [tokenAtual, v.vagaId], function (r) {
+        if (r && !cvPdf[v.vagaId]) { cvPdf[v.vagaId] = { estado: "ok", r: r, anterior: true }; desenharVagas(); }
+      }, function () {});
+    }
+
+    function gerarCurriculo(v, cortar) {
+      var anterior = cvPdf[v.vagaId] && cvPdf[v.vagaId].r;
+      cvPdf[v.vagaId] = { estado: "gerando", r: anterior };
+      desenharVagas();
+      chamar("gerarCurriculoPdf", [tokenAtual, v.vagaId, cortar === true], function (r) {
+        cvPdf[v.vagaId] = { estado: "ok", r: r };
+        desenharVagas();
+      }, function (msg) {
+        cvPdf[v.vagaId] = { estado: anterior ? "ok" : "vazio", r: anterior, erro: msg };
+        desenharVagas();
+      });
+    }
+
+    function urlDoPdf(r) {
+      if (r.url) return r.url;
+      var bin = atob(r.pdfBase64);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      r.url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      return r.url;
+    }
+
+    function blocoCurriculoPdf(v) {
+      var e = cvPdf[v.vagaId] || { estado: "vazio" };
+      var gerando = e.estado === "gerando";
+      var r = e.r;
+      var blocos = [
+        h("h4", {}, "Currículo em PDF"),
+        h("p", { class: "small muted" }, "Monta o currículo para esta vaga só com itens confirmados da sua ficha, usando o resumo ajustado acima (a versão mais recente). Uma coluna, sem tabela nem cor, com texto selecionável, no máximo 2 páginas. Leva até um minuto."),
+        e.erro ? h("p", { class: "erro", role: "alert" }, e.erro) : null,
+        gerando ? h("p", { class: "small muted" }, "Gerando o currículo…") : null,
+        h("div", { class: "row" },
+          h("button", { class: "btn mini prim", type: "button", disabled: gerando, onclick: function () { gerarCurriculo(v, false); } },
+            r ? "Gerar de novo" : "Gerar currículo em PDF"))
+      ];
+      if (r) {
+        var resumoPdf = (r.anterior ? "Último gerado" : "Versão " + r.versao) + " · " + (r.paginas == null ? "páginas ?" : r.paginas + (r.paginas === 1 ? " página" : " páginas") + (r.paginasEstimadas ? " (estimado)" : "")) + " · " + r.formato;
+        var url = urlDoPdf(r);
+        blocos.push(h("div", { class: "row" },
+          h("span", { class: "small muted" }, resumoPdf),
+          h("a", { class: "btn mini", href: url, download: r.nomeArquivo }, "Baixar PDF"),
+          h("a", { class: "btn mini", href: url, target: "_blank", rel: "noopener noreferrer" }, "Abrir")));
+        if (r.avisos && r.avisos.length) {
+          blocos.push(h("div", { class: "aviso" }, h("b", {}, "O servidor ajustou ou avisou:"),
+            h("ul", {}, r.avisos.map(function (a) { return h("li", {}, a); }))));
+        }
+        if (r.sugestoesCorte && r.sugestoesCorte.length) {
+          blocos.push(h("div", { class: "aviso" }, h("b", {}, "Passou de 2 páginas. Para caber, corte nesta ordem:"),
+            h("ol", {}, r.sugestoesCorte.map(function (s) { return h("li", {}, s); })),
+            h("div", { class: "row" },
+              h("button", { class: "btn mini", type: "button", disabled: gerando, onclick: function () { gerarCurriculo(v, true); } }, "Cortar automaticamente"))));
+        }
+        if (r.cortado && r.cortado.length) {
+          blocos.push(h("div", { class: "aviso" }, h("b", {}, "Cortado para caber em 2 páginas:"),
+            h("ul", {}, r.cortado.map(function (c) { return h("li", {}, c); }))));
+        }
+        if (r.conferir && r.conferir.length) {
+          blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira o PDF antes de enviar:"),
+            h("ul", {}, r.conferir.map(function (c) { return h("li", {}, c); }))));
+        }
+      }
+      return h("div", { class: "stack reescrita" }, blocos);
+    }
+
     function painelAdaptacao(v) {
       var e = adaptacoes[v.vagaId] || { estado: "carregando" };
       if (e.estado === "carregando") return h("div", { class: "painel-descricao" }, h("p", { class: "small muted" }, "Carregando…"));
@@ -649,6 +724,7 @@
         var quando = new Date(e.a.textos[0].criadoEm);
         blocos.push(h("p", { class: "small muted" }, "Versão de " + (isNaN(quando) ? e.a.textos[0].criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))));
         e.a.textos.forEach(function (t) { blocos.push(blocoTextoAdaptado(v, t)); });
+        blocos.push(blocoCurriculoPdf(v));
         if (e.a.conferir && e.a.conferir.length) {
           blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira antes de enviar:"),
             h("ul", {}, e.a.conferir.map(function (c) { return h("li", {}, c); }))));
