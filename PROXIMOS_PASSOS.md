@@ -297,6 +297,41 @@ Material de apoio: imagens e prints levantados pelo Roberto ficam em `prototipo/
 
 Perguntas em aberto: quais outros sites estudar; se teste ATS e preparação de entrevista entram no escopo; qual preço pretendido, ou se o uso é só próprio.
 
+## Para o futuro: produção em VPS com containers
+
+Registrado em 16/11/2026, sem etapa no plano ainda. A intenção do Roberto é que, em produção, o me-contrata rode numa **VPS, em containers**. O Apps Script e a planilha ficam como ambiente do piloto. Isso muda a pergunta sobre o banco: não é "planilha para Supabase", e sim "qual a arquitetura de produção". Migrar só os dados mantendo o Apps Script seria retrabalho, porque o servidor inteiro será portado.
+
+**O que se aproveita:** o servidor é TypeScript e a lógica é quase toda pura (humanizador, extração de descrições, prompts, validações, adaptação por vaga). O que é do Google precisa de substituto, e o simulador de testes (`tests/simulador.js`) já lista essas fronteiras.
+
+| Hoje (Apps Script) | Na VPS (a decidir) |
+|---|---|
+| Planilha | Postgres |
+| `LockService` | Transações |
+| `CacheService` (limites diários) | Tabela ou Redis |
+| E-mail do código de login (`MailApp`) | Provedor SMTP ou transacional |
+| Pasta no Drive | Volume ou armazenamento compatível com S3 |
+| Gatilhos de tempo | `cron` em container |
+| Propriedades do Script | Variáveis de ambiente e segredos do Docker |
+| `doPost` do agente com HMAC | Endpoint HTTP (o HMAC fica) |
+| Página servida pelo `HtmlService` | Arquivos estáticos do próprio app |
+
+Opções para os dados (levantamento inicial, ainda sem pesquisa de mercado):
+- **A. Supabase gerenciado:** sem operar o banco; Free comporta o piloto (500 MB; pausa após 1 semana sem atividade), Pro a partir de US$ 25/mês (8 GB, sem pausa); dependência de fornecedor e dados fora da VPS.
+- **B. Supabase hospedado na própria VPS:** painel, Auth, RLS e Storage, mas uma pilha com muitos containers e toda a operação por conta do Roberto.
+- **C. Postgres em container com API própria em TypeScript:** mais leve e com controle total; o RLS do Postgres funciona de verdade (a API conecta com papel limitado e informa o `usuario_id` por transação). Com o Supabase, a chave de servidor ignora o RLS e o isolamento continuaria dependendo do código.
+
+**Ponto em aberto (decisão do Roberto, 16/11/2026): fazer uma análise e uma pesquisa de mercado sobre a melhor forma de migrar o ambiente**, no formato que o projeto vem seguindo (levantamento com fontes, comparação, decisão registrada aqui). A pesquisar:
+- Provedores de VPS: preço, região no Brasil e latência, backup e suporte.
+- Banco: Postgres gerenciado, em container ou Supabase (A, B e C acima), com backup, restauração e custo total por mês.
+- Orquestração e publicação: Docker Compose ou uma plataforma de deploy autohospedada (Coolify, Dokploy e similares, a avaliar), proxy reverso e TLS.
+- E-mail transacional (login por código), armazenamento de arquivos, cron, segredos, monitoramento e alertas.
+- LGPD: onde ficam os dados, contrato com operador, exclusão e portabilidade.
+- Plano de migração dos dados e do corte (como mover o piloto sem perder usuários e consentimentos) e esforço do porte.
+
+Preparar agora, barato e útil em qualquer opção: concentrar o acesso a dados em funções de repositório (em vez de cada arquivo chamar `lerAba_`) e manter a lógica fora dos serviços do Google. A migração vem depois do piloto (Etapa 8), para não construir infraestrutura antes de validar o produto.
+
+Decisões que dependem do Roberto: quanto quer operar o banco, se a migração vem antes ou depois do piloto, domínio, provedor de e-mail e orçamento da VPS.
+
 ## Etapa 7 — Skill li-candidatura
 
 | ID | Entrega | Critério de aceite | Depende de |
