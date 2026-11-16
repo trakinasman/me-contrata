@@ -346,6 +346,20 @@ Opções para os dados (levantamento inicial, ainda sem pesquisa de mercado):
 - LGPD: onde ficam os dados, contrato com operador, exclusão e portabilidade.
 - Plano de migração dos dados e do corte (como mover o piloto sem perder usuários e consentimentos) e esforço do porte.
 
+**Provedores candidatos** (registrado em 16/11/2026; só a Oracle teve a documentação lida; os demais estão a pesquisar, sem preço nem região conferidos):
+
+| Provedor | Situação | O que se sabe | A confirmar |
+|---|---|---|---|
+| Oracle Cloud Free Tier | Lido (documentação oficial, 16/11/2026) | Always Free: VM Arm (Ampere A1) de 2 OCPUs e 12 GB no total (o limite já foi reduzido pela metade em 2026, segundo relatos), 2 VMs AMD de 1 GB, 200 GB de disco e 5 backups de volume, 10 TB de tráfego de saída por mês, 3.000 e-mails por mês, 1 balanceador. Vale na região de origem, por tempo indefinido, mas as condições já mudaram uma vez | Instâncias ociosas podem ser recuperadas (CPU p95 e rede abaixo de 20% por 7 dias, e memória no Arm), o que é o perfil de um piloto com poucos usuários; erro frequente de "out of host capacity"; porta 25 bloqueada (usar o Email Delivery ou provedor por API); o banco Autonomous é Oracle, não Postgres (rodar Postgres em container). Não verificado: região de São Paulo ou Vinhedo como origem, exigência de cartão, se conta paga fica isenta da recuperação, contrato de operador (LGPD), imagens Arm dos containers |
+| Hetzner | A pesquisar | | Regiões (há uma no Brasil ou só exterior), preço, latência para o Brasil, backups, termos |
+| Contabo | A pesquisar | | Mesmos pontos, mais desempenho real e suporte |
+| DigitalOcean | A pesquisar | | Mesmos pontos, mais bancos gerenciados e região mais próxima do Brasil |
+| Locaweb | A pesquisar | | VPS ou nuvem no Brasil, preço, suporte em português, contrato e LGPD |
+| Outro provedor brasileiro | A definir | | Indicação do Roberto |
+| AWS Lightsail e Google Cloud (sugestões do Claude) | A pesquisar | | Região de São Paulo, preço, faixa gratuita e complexidade |
+
+Leitura inicial da Oracle (a validar na pesquisa): serve bem como **laboratório e piloto**; para produção com usuários reais, não depender só dela (recuperação por ociosidade, capacidade, política que muda, sem suporte no plano grátis), com backup do Postgres **fora** da Oracle. Uma VM única é ponto único de falha em qualquer provedor.
+
 Preparar agora, barato e útil em qualquer opção: concentrar o acesso a dados em funções de repositório (em vez de cada arquivo chamar `lerAba_`) e manter a lógica fora dos serviços do Google. A migração vem depois do piloto (Etapa 8), para não construir infraestrutura antes de validar o produto.
 
 Decisões que dependem do Roberto: quanto quer operar o banco, se a migração vem antes ou depois do piloto, domínio, provedor de e-mail e orçamento da VPS.
