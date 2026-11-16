@@ -16,9 +16,15 @@ Uma linha por imagem, logo que ela entrar na pasta. Nome do arquivo no padrão `
 | 12_sites_vagas_a.png | 16/11/2026 | Post de Instagram sobre imigração para Portugal (print) | 9 sites de vagas em Portugal (Net-Empregos, SAPO Emprego, LinkedIn, Indeed PT, remoteOK, Europe Language Jobs, Jobs in Network, Talent.com, BeFinder) e dicas de currículo no modelo europeu | Vagas fora do Brasil (seção do PROXIMOS_PASSOS) |
 | 12_sites_vagas_b.png | 16/11/2026 | Post de Instagram, conta não visível (print) | "Lista definitiva" de 19 sites de emprego remoto (FlexJobs, Just Remote, We Work Remotely, Remote.co, Virtual Vocations, Working Nomads, Pangian, Arc, RemoteOK, Fiverr, Authentic Jobs, Jobspresso, Outsourcely, JobRack, Freelancer, Upwork, Toptal, Wellfound, Himalayas) | Vagas remotas no exterior; vários são mercados de freelancer, não de emprego |
 | curriculo_ia.png | 16/11/2026 | Post de Instagram @curriculo.napratica (print) | Palavras que enfraquecem o currículo (Responsável por, Auxiliei em, Trabalhei com, Tenho experiência em, Boa comunicação, Proativo) e a troca sugerida | Humanizador e skill li-candidatura; atenção: várias trocas sugeridas inflam o fato |
+| hire_international_1.pdf | 16/11/2026 | Reclame Aqui, empresa HIRE BRAZIL (impressão da página, sem texto selecionável) | Reclamação de 07/09/2026 (respondida): cancelamento e reembolso do Curso Remoto Express pedidos dentro dos 7 dias e não atendidos; resposta da empresa | Queixas da Hire International/Hire Brazil (planilha de concorrentes) |
+| hire_international_2.pdf | 16/11/2026 | Reclame Aqui, empresa HIRE BRAZIL (impressão da página, sem texto selecionável) | Reclamação de 27/05/2026 (respondida): Pacote Moeda Forte sem acesso integral e suporte; reembolso feito depois do pedido de cancelamento | Queixas da Hire International/Hire Brazil |
+| hire_international_3.pdf | 16/11/2026 | Reclame Aqui, empresa HIRE BRAZIL (impressão da página, sem texto selecionável) | Reclamação de 24/05/2026 (resolvida): cancelamento da mentoria dentro de 7 dias sem retorno; reembolso feito em 2 dias pela Hotmart; consumidor deu nota 10 | Queixas da Hire International/Hire Brazil |
+| hire_international_4.pdf | 16/11/2026 | Reclame Aqui, empresa HIRE BRAZIL (impressão da página, sem texto selecionável) | Reclamação de 22/04/2026 (respondida): Combo Remoto Express com conteúdo raso e sem acesso à plataforma; resposta da empresa | Queixas da Hire International/Hire Brazil |
 
 ## Regras
 
 - Dado pessoal (perfil de LinkedIn de alguém, e-mail, telefone): cobrir antes de guardar, ou não guardar.
 - Print de site de terceiros: só para estudo interno; não publicar nem embutir no app.
 - Quem pedir ao Claude para ler uma imagem aqui deve citar o nome do arquivo.
+- PDF de impressão de página (como os do Reclame Aqui) não tem texto selecionável: o Claude precisa renderizar as páginas (PyMuPDF numa pasta temporária); se for possível, salve também como imagem ou copie o texto.
+- As reclamações trazem nome e cidade de consumidores: não copiar esses dados para o índice nem para a planilha.
