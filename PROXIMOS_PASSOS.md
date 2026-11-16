@@ -275,6 +275,25 @@ Perguntas a responder antes de integrar:
 - Filtros que as Preferências ainda não têm: país ou fuso aceito, idioma da vaga, forma de contratação (contractor, EOR, PJ) e moeda.
 - Nota: `ufs` e `cidades` só cobrem o Brasil, e quem não fala inglês perde 30 pontos em "exige idioma".
 
+## Para o futuro: aprender com a concorrência
+
+Registrado em 16/11/2026, sem etapa no plano ainda. Estudar sites parecidos com o me-contrata para decidir o que entra, o que fica de fora e como se diferenciar. Estudo inicial feito só pelas páginas públicas (números são alegações dos próprios sites).
+
+| Site | O que é | Preço divulgado | Observações |
+|---|---|---|---|
+| hire-international.com | Mentoria humana para carreira internacional (moeda forte) | Sem preço público; vendas por WhatsApp | Sem IA; mercado vizinho |
+| linkelyzer.com.br | IA que analisa o LinkedIn (nota 0 a 100, 39 critérios), gera CV, teste ATS, buscador de vagas, organizador de candidaturas, agenda de posts | 1 análise grátis; R$ 29,90 por 3 créditos; R$ 67/mês; R$ 49/mês no anual | O mais parecido com o nosso |
+| aiapply.co | Copiloto de candidatura: CV, carta por vaga, Auto Apply, preparação de entrevista | Plano grátis limitado, assinatura e créditos (valores não divulgados) | Compete por volume de candidaturas automáticas |
+
+Hipóteses para discutir (não são decisões):
+- O diferencial do me-contrata é a verdade (só fatos confirmados, `[CONFIRMAR]`, aprovação do usuário, LGPD). Não copiar o Auto Apply.
+- Eles têm e nós ainda não: teste ATS, preparação de entrevista, primeira análise grátis sem cartão.
+- Preço de referência no Brasil: cerca de R$ 30 por 3 análises e R$ 49 a 67 por mês.
+
+Etapa proposta, "como melhorar com a ajuda da concorrência": (1) páginas públicas (feito); (2) queixas reais de usuários (Reclame Aqui, Trustpilot, Reddit, lojas), com contagem e link de cada citação; (3) matriz de funcionalidades nossa e deles; (4) decisões para o plano. Onde encaixa: um olhar leve antes da E5-05 (teste ATS e modelos de CV) e da E5-07 (nota de aderência); o estudo principal antes da Etapa 8 (piloto: promessa da página, onboarding, preço); e a comparação com o feedback real depois do piloto.
+
+Perguntas em aberto: quais outros sites estudar; se teste ATS e preparação de entrevista entram no escopo; qual preço pretendido, ou se o uso é só próprio.
+
 ## Etapa 7 — Skill li-candidatura
 
 | ID | Entrega | Critério de aceite | Depende de |
