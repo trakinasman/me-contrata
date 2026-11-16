@@ -284,6 +284,7 @@ Registrado em 16/11/2026, sem etapa no plano ainda. Estudar sites parecidos com 
 | hire-international.com | Mentoria humana para carreira internacional (moeda forte) | Sem preço público; vendas por WhatsApp | Sem IA; mercado vizinho |
 | linkelyzer.com.br | IA que analisa o LinkedIn (nota 0 a 100, 39 critérios), gera CV, teste ATS, buscador de vagas, organizador de candidaturas, agenda de posts | 1 análise grátis; R$ 29,90 por 3 créditos; R$ 67/mês; R$ 49/mês no anual | O mais parecido com o nosso |
 | aiapply.co | Copiloto de candidatura: CV, carta por vaga, Auto Apply, preparação de entrevista | Plano grátis limitado, assinatura e créditos (valores não divulgados) | Compete por volume de candidaturas automáticas |
+| jobstep.io | IA com nota do currículo e teste ATS, vagas sugeridas por dia com índice de compatibilidade, adaptação de currículo e carta a cada vaga colada, painel de candidaturas | Grátis (nota, criação com IA, modelos, rastreio); trimestral e mensal pagos (valores não divulgados) | Suíça, dados na Europa, GDPR, AES-256; promete não treinar IA com seus dados nos planos pagos. Alega 120 mil usuários e 4,7 no Trustpilot (16/11/2026)
 
 Hipóteses para discutir (não são decisões):
 - O diferencial do me-contrata é a verdade (só fatos confirmados, `[CONFIRMAR]`, aprovação do usuário, LGPD). Não copiar o Auto Apply.
