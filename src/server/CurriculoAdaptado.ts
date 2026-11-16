@@ -234,7 +234,7 @@ function systemCurriculo_(): string {
     "3. Não junte dois fatos de modo que mude o que cada um diz: cada ferramenta, número e resultado fica ligado só ao que o item diz.",
     "4. Nada de <proibido>. Curso não é certificação. Formação em andamento não é concluída.",
     "5. Tópicos: sem pronome, começam com verbo no passado ou com o resultado; resultado com número primeiro; até " + CURRICULO_PDF.MAX_TEXTO +
-      " caracteres; sem adjetivo de elogio (\"proativo\", \"excelente\"). Escolha o que mais pesa para a vaga.",
+      " caracteres, e o que passar disso é descartado: divida em dois tópicos em vez de apertar; sem adjetivo de elogio (\"proativo\", \"excelente\"). Escolha o que mais pesa para a vaga.",
     "6. Experiências em ordem cronológica inversa. Até " + CURRICULO_PDF.MAX_TOPICOS + " tópicos por experiência; cargo com mais de dez anos, até 2.",
     "   O currículo inteiro precisa caber em 2 páginas.",
     "7. cabecalho: nome, e-mail profissional e cidade, como aparecem nos itens. Se um deles não aparecer, deixe vazio.",
@@ -322,13 +322,17 @@ function validarCurriculo_(r: unknown, itens: ItemFichaCv[], resumo: string): { 
   const comFonte = (lista: unknown, rotulo: string): string[] => {
     const saida: string[] = [];
     let tirados = 0;
+    let longos = 0;
     for (const x of Array.isArray(lista) ? lista : []) {
       const e = (x ?? {}) as Record<string, unknown>;
-      const t = texto(e.texto, CURRICULO_PDF.MAX_TEXTO);
+      // Texto acima do limite sai inteiro: cortar no meio mudaria o que o tópico diz (ex.: "EIA/TIA-568-B" virou "EIA/TIA-56").
+      const t = limparTextoPT_(String(e.texto ?? ""), true);
+      if (t.length > CURRICULO_PDF.MAX_TEXTO) { longos++; continue; }
       const base = citados(e.fonte);
       if (t && base && numerosConferem_(t, base)) saida.push(t); else tirados++;
     }
     if (tirados) avisos.push(`${tirados} item(ns) de ${rotulo} saíram: sem item da ficha que os sustente ou com número que não está no item.`);
+    if (longos) avisos.push(`${longos} item(ns) de ${rotulo} passaram de ${CURRICULO_PDF.MAX_TEXTO} caracteres e saíram: divida em dois tópicos.`);
     return saida;
   };
 

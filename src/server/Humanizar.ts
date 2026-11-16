@@ -146,7 +146,8 @@ function palavrasPT_(t: string): string[] {
 }
 
 function frasesPT_(t: string): string[] {
-  return (t.match(/[^.!?\n]+[.!?]*/g) || []).map((s) => s.trim()).filter((s) => s.split(/\s+/).length > 2);
+  // O ponto entre dígitos ("4.100 escolas") é separador de milhar, não fim de frase.
+  return (t.match(/(?:[^.!?\n]|(?<=\d)\.(?=\d))+[.!?]*/g) || []).map((s) => s.trim()).filter((s) => s.split(/\s+/).length > 2);
 }
 
 function desvioPadrao_(v: number[]): number {

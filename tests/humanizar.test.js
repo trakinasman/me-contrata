@@ -90,5 +90,11 @@ module.exports = function () {
   const soCurto = avaliar("Título curto.", []);
   r.ok(Number.isFinite(soCurto.nota) && soCurto.checagens.length === 5, "texto muito curto: nota finita");
 
+  // O ponto entre dígitos ("4.100 escolas") é separador de milhar e não termina a frase (o Ritmo contava uma frase a mais).
+  const frases = (t) => ctx.frasesPT_(t);
+  r.ok(frases("Opera mais de 4.100 escolas no país inteiro. O SLA foi de 35% para 70%.").length === 2, "frases: 4.100 não divide a frase");
+  r.ok(frases("Versão 3.5 do plano. Mais uma frase aqui. E outra frase também.").length === 3, "frases: 3.5 não divide a frase");
+  r.ok(frases("Fechou em 2026. Depois seguiu o plano combinado.").length === 2, "frases: ponto entre palavras e números continua dividindo");
+
   return r;
 };
