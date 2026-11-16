@@ -355,7 +355,8 @@
         v.motivos.length ? h("div", { class: "small muted" }, "Por quê: " + v.motivos.join(" · ")) : null,
         descartando === v.vagaId ? formDescarte(v) : acoesVaga(v),
         descricaoAberta === v.vagaId ? painelDescricao(v) : null,
-        adaptacaoAberta === v.vagaId ? painelAdaptacao(v) : null);
+        adaptacaoAberta === v.vagaId ? painelAdaptacao(v) : null,
+        recrutadorAberto === v.vagaId ? painelRecrutador(v) : null);
     }
 
     function acoesVaga(v) {
@@ -365,6 +366,8 @@
           aberta ? "Fechar descrição" : "Descrição"),
         h("button", { class: "btn mini", type: "button", "aria-expanded": adaptacaoAberta === v.vagaId ? "true" : "false", onclick: function () { alternarAdaptacao(v); } },
           adaptacaoAberta === v.vagaId ? "Fechar adaptação" : "Adaptar"),
+        h("button", { class: "btn mini", type: "button", "aria-expanded": recrutadorAberto === v.vagaId ? "true" : "false", onclick: function () { alternarRecrutador(v); } },
+          recrutadorAberto === v.vagaId ? "Fechar mensagens" : "Mensagem ao recrutador"),
         v.noFunil ? h("span", { class: "chip ok" }, "no funil") :
           h("button", { class: "btn mini", type: "button", onclick: function (ev) { moverVaga(v, ev.target); } }, "Mover para o funil"),
         h("button", { class: "btn mini perigo", type: "button", onclick: function () { descartando = v.vagaId; desenharVagas(); } }, "Descartar"));
@@ -728,6 +731,98 @@
         if (e.a.conferir && e.a.conferir.length) {
           blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira antes de enviar:"),
             h("ul", {}, e.a.conferir.map(function (c) { return h("li", {}, c); }))));
+        }
+      }
+      return h("div", { class: "stack painel-descricao" }, blocos);
+    }
+
+    // ---------- Mensagens ao recrutador (E5-06) ----------
+    // O app não envia nada: o candidato copia e envia à mão. O texto da IA entra por textContent.
+    var recrutadorAberto = null;
+    var recrutador = {};  // vagaId -> { estado: "carregando" | "vazio" | "gerando" | "ok", r, erro, form }
+    var OBJETIVOS_RCR = [["conversa", "Uma conversa sobre a vaga"], ["indicacao", "Uma indicação ou apresentação na empresa"], ["status", "Saber o andamento da candidatura"]];
+
+    function novoEstadoRecrutador() { return { estado: "carregando", form: { nome: "", cargo: "", gancho: "", objetivo: "conversa" } }; }
+
+    function alternarRecrutador(v) {
+      if (recrutadorAberto === v.vagaId) { recrutadorAberto = null; desenharVagas(); return; }
+      recrutadorAberto = v.vagaId;
+      if (!recrutador[v.vagaId]) {
+        recrutador[v.vagaId] = novoEstadoRecrutador();
+        chamar("ultimasMensagensRecrutador", [tokenAtual, v.vagaId], function (r) {
+          var e = recrutador[v.vagaId];
+          e.estado = r.mensagens.length ? "ok" : "vazio";
+          e.r = r.mensagens.length ? r : undefined;
+          desenharVagas();
+        }, function (msg) { recrutador[v.vagaId].estado = "vazio"; recrutador[v.vagaId].erro = msg; desenharVagas(); });
+      }
+      desenharVagas();
+    }
+
+    function gerarMensagens(v) {
+      var e = recrutador[v.vagaId];
+      var anterior = e.r;
+      e.estado = "gerando";
+      e.erro = "";
+      desenharVagas();
+      chamar("gerarMensagensRecrutador", [tokenAtual, v.vagaId, e.form], function (r) {
+        e.estado = "ok";
+        e.r = r;
+        desenharVagas();
+      }, function (msg) {
+        e.estado = anterior ? "ok" : "vazio";
+        e.r = anterior;
+        e.erro = msg;
+        desenharVagas();
+      });
+    }
+
+    function blocoMensagem(m) {
+      var aviso = h("span", { class: "small muted" });
+      return h("div", { class: "stack reescrita" },
+        h("div", { class: "row entre" },
+          h("h4", {}, m.nome),
+          h("span", {},
+            h("span", { class: "chip" }, m.quando), " ",
+            h("span", { class: "small muted" }, m.conteudo.length + " / " + m.limite + " caracteres"))),
+        h("div", { class: "texto-gerado" }, m.conteudo),
+        desenharNaturalidade(m.avaliacao),
+        h("div", { class: "row" },
+          h("button", { class: "btn mini", type: "button", onclick: function () { copiar(m.conteudo, aviso); } }, "Copiar"),
+          aviso));
+    }
+
+    function painelRecrutador(v) {
+      var e = recrutador[v.vagaId] || novoEstadoRecrutador();
+      if (e.estado === "carregando") return h("div", { class: "painel-descricao" }, h("p", { class: "small muted" }, "Carregando…"));
+      var gerando = e.estado === "gerando";
+      var f = e.form;
+      var nome = h("input", { type: "text", maxlength: "80", placeholder: "Nome de quem recebe (opcional)", "aria-label": "Nome de quem recebe", value: f.nome });
+      var cargo = h("input", { type: "text", maxlength: "80", placeholder: "Cargo de quem recebe (opcional)", "aria-label": "Cargo de quem recebe", value: f.cargo });
+      var gancho = h("textarea", { rows: "3", maxlength: "400", placeholder: "Por que escrever agora? Um post da pessoa, algo que a empresa lançou, uma conexão em comum. Sem isso, o gancho é a sua candidatura.", "aria-label": "Gancho" });
+      gancho.value = f.gancho;
+      var objetivo = h("select", { "aria-label": "O que você quer" }, OBJETIVOS_RCR.map(function (o) { return h("option", { value: o[0] }, o[1]); }));
+      objetivo.value = f.objetivo;
+      nome.addEventListener("input", function () { f.nome = nome.value; });
+      cargo.addEventListener("input", function () { f.cargo = cargo.value; });
+      gancho.addEventListener("input", function () { f.gancho = gancho.value; });
+      objetivo.addEventListener("change", function () { f.objetivo = objetivo.value; });
+      var blocos = [
+        h("p", { class: "small muted" }, "Gera o convite de conexão (até 200 caracteres), a primeira mensagem e duas cobranças, só com fatos confirmados da sua ficha. O app não envia nada: você copia e envia à mão. O LinkedIn limita contas com mais de 20 convites por dia. Leva até um minuto."),
+        h("div", { class: "stack" }, nome, cargo, gancho, objetivo),
+        e.erro ? h("p", { class: "erro", role: "alert" }, e.erro) : null,
+        gerando ? h("p", { class: "small muted" }, "Escrevendo as mensagens…") : null,
+        h("div", { class: "row" },
+          h("button", { class: "btn mini prim", type: "button", disabled: gerando, onclick: function () { gerarMensagens(v); } },
+            e.r ? "Gerar de novo" : "Gerar mensagens"))
+      ];
+      if (e.r) {
+        var quando = new Date(e.r.mensagens[0].criadoEm);
+        blocos.push(h("p", { class: "small muted" }, "Versão de " + (isNaN(quando) ? e.r.mensagens[0].criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))));
+        e.r.mensagens.forEach(function (m) { blocos.push(blocoMensagem(m)); });
+        if (e.r.conferir && e.r.conferir.length) {
+          blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira antes de enviar:"),
+            h("ul", {}, e.r.conferir.map(function (c) { return h("li", {}, c); }))));
         }
       }
       return h("div", { class: "stack painel-descricao" }, blocos);
