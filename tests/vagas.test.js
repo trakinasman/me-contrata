@@ -82,5 +82,33 @@ module.exports = function () {
   r.ok(g("LISTAS.status_candidatura").join(",") === "inserida,curriculo_enviado,entrevista_ia,entrevista_rh,entrevista_gestor,proposta,contratado,recusado,desisti", "etapas do funil na ordem decidida");
   r.erro(() => ctx.moverParaFunil(A, ""), /não encontrada/, "vaga vazia recusada");
 
+  // Vaga adicionada pelo candidato (17/11/2026, caso Serprol).
+  const linkSerprol = "https://br.indeed.com/viewjob?jk=6fe7efab6df9fbd3&tk=1k6g5akpuk176801&from=jobi2a_jobmatch-reactivation-pt-BR_email&xkcb=SoDX67";
+  r.erro(() => ctx.adicionarVaga(A, { titulo: "", empresa: "Serprol" }), /título/, "sem título: recusa");
+  r.erro(() => ctx.adicionarVaga(A, { titulo: "Coordenador", empresa: "" }), /empresa/, "sem empresa: recusa");
+  r.erro(() => ctx.adicionarVaga(A, { titulo: "Coordenador", empresa: "Serprol", link: "http://inseguro.com" }), /https/, "link sem https: recusa");
+  r.erro(() => ctx.adicionarVaga(A, { titulo: "Coordenador", empresa: "Serprol", modalidade: "lua" }), /Modalidade inválida/, "modalidade fora da lista: recusa");
+  r.erro(() => ctx.adicionarVaga(A, { titulo: "Coordenador", empresa: "Serprol", fonte: "Pombo" }), /Origem inválida/, "origem fora da lista: recusa");
+  const antesCat = abas.Vagas.d.length;
+  const lm = ctx.adicionarVaga(A, { titulo: "  Coordenador de <b>Operações</b> ", empresa: "Serprol", link: linkSerprol, local: "Florianópolis/SC", modalidade: "hibrido" });
+  const nova = lm.vagas.find((v) => v.empresa === "Serprol");
+  const linhaCat = abas.Vagas.d.at(-1);
+  r.ok(abas.Vagas.d.length === antesCat + 1 && /^manual:[0-9a-f-]{36}$/.test(linhaCat[0]), "entra no catálogo com id manual:<uuid>");
+  r.ok(nova && nova.titulo === "Coordenador de b Operações /b" && !/[<>]/.test(nova.titulo), "título limpo, sem < nem >");
+  r.ok(nova.link === "https://br.indeed.com/viewjob?jk=6fe7efab6df9fbd3", "link do Indeed sem os parâmetros de rastreamento do e-mail");
+  r.ok(nova.fonte === "Indeed" && nova.uf === "SC" && nova.modalidade === "hibrido" && nova.nota === null, "origem sugerida pelo link, UF, modalidade e sem nota por regras");
+  r.ok(nova.vigente && nova.motivos.join() === "adicionada por você" && lm.origensManual.includes("Indicação"), "fica vigente e marcada como adicionada por você");
+  const vc = abas.VagasCandidato.d.at(-1);
+  r.ok(vc[0] === "usr-A" && vc[1] === nova.vagaId && ehData(vc[8]), "linha do candidato em VagasCandidato");
+  r.erro(() => ctx.adicionarVaga(A, { titulo: "Outra", empresa: "Serprol", link: "https://br.indeed.com/viewjob?jk=6fe7efab6df9fbd3&from=outro" }), /já tem esta vaga/, "mesmo link (depois de limpo): não duplica");
+  r.ok(!ctx.listarVagas(B).vagas.some((v) => v.empresa === "Serprol"), "isolamento: a vaga de A não aparece para B");
+  const lbm = ctx.adicionarVaga(B, { titulo: "Coordenador", empresa: "Serprol", link: linkSerprol });
+  r.ok(lbm.vagas.some((v) => v.empresa === "Serprol"), "outro candidato pode adicionar a mesma vaga");
+  const vb = ctx.adicionarVaga(B, { titulo: "Sem link", empresa: "Indicada", fonte: "Indicação" }).vagas.find((v) => v.empresa === "Indicada");
+  r.ok(vb.link === "" && vb.fonte === "Indicação", "sem link: fonte escolhida pelo candidato");
+  r.ok(ctx.linkDeVagaLimpo_("https://www.linkedin.com/jobs/view/coordenador-de-noc-at-acme-4012345678/?trk=email") === "https://www.linkedin.com/jobs/view/4012345678/", "link do LinkedIn sem rastreamento");
+  ctx.moverParaFunil(A, nova.vagaId);
+  r.ok(ctx.funilDoCandidato(A).candidaturas.some((c) => c.vagaId === nova.vagaId && c.fonte === "Indeed"), "vaga adicionada vai para o funil como as outras");
+
   return r;
 };
