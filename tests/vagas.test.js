@@ -98,6 +98,7 @@ module.exports = function () {
   r.ok(nova.link === "https://br.indeed.com/viewjob?jk=6fe7efab6df9fbd3", "link do Indeed sem os parâmetros de rastreamento do e-mail");
   r.ok(nova.fonte === "Indeed" && nova.uf === "SC" && nova.modalidade === "hibrido" && nova.nota === null, "origem sugerida pelo link, UF, modalidade e sem nota por regras");
   r.ok(nova.vigente && nova.motivos.join() === "adicionada por você" && lm.origensManual.includes("Indicação"), "fica vigente e marcada como adicionada por você");
+  r.ok(lm.vagas[0].vagaId === nova.vagaId && nova.manual && !lm.vagas.slice(1).some((v) => v.manual), "a vaga adicionada vem no topo da lista (sem nota, caía no fim) e marcada como manual");
   const vc = abas.VagasCandidato.d.at(-1);
   r.ok(vc[0] === "usr-A" && vc[1] === nova.vagaId && ehData(vc[8]), "linha do candidato em VagasCandidato");
   r.erro(() => ctx.adicionarVaga(A, { titulo: "Outra", empresa: "Serprol", link: "https://br.indeed.com/viewjob?jk=6fe7efab6df9fbd3&from=outro" }), /já tem esta vaga/, "mesmo link (depois de limpo): não duplica");

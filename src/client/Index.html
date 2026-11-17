@@ -97,6 +97,7 @@
         <div class="row"><button id="bt-adicionar-vaga" class="btn mini" type="button">+ Adicionar vaga</button></div>
         <div id="form-adicionar-vaga" class="card stack" hidden></div>
         <div class="row filtros">
+          <div class="busca"><label for="f-busca">Buscar</label><input type="text" id="f-busca" maxlength="80" placeholder="Título, empresa ou cidade"></div>
           <div><label for="f-fonte">Fonte</label><select id="f-fonte"></select></div>
           <div><label for="f-modalidade">Modalidade</label><select id="f-modalidade"></select></div>
           <div><label for="f-uf">UF</label><select id="f-uf"></select></div>
@@ -320,10 +321,17 @@
       el("rotulo-antigas").textContent = "Mostrar também as que o agente não traz há mais de " + vagas.diasVigente + " dias";
     }
 
+    // Busca sem acento e sem diferença de maiúsculas; todas as palavras digitadas precisam aparecer (em qualquer campo).
+    var MARCAS_ACENTO = new RegExp("[\\u0300-\\u036f]", "g");
+    function semAcento(t) { return String(t || "").normalize("NFD").replace(MARCAS_ACENTO, "").toLowerCase(); }
+
     function vagasFiltradas() {
       var fonte = el("f-fonte").value, mod = el("f-modalidade").value, uf = el("f-uf").value, antigas = el("f-antigas").checked;
+      var termos = semAcento(el("f-busca").value).split(/\s+/).filter(function (x) { return x; });
       return vagas.vagas.filter(function (v) {
-        return (antigas || v.vigente) && (!fonte || v.fonte === fonte) && (!mod || v.modalidade === mod) &&
+        var alvo = semAcento([v.titulo, v.empresa, v.local, v.fonte, NOME_MODALIDADE[v.modalidade] || v.modalidade].concat(v.motivos).join(" "));
+        // Com busca, as antigas também entram: quem procura uma vaga pelo nome quer achá-la mesmo fora da busca do agente.
+        return (antigas || v.vigente || termos.length > 0) && termos.every(function (x) { return alvo.indexOf(x) >= 0; }) && (!fonte || v.fonte === fonte) && (!mod || v.modalidade === mod) &&
           (!uf || (uf === SEM_UF ? !v.uf : v.uf === uf));
       });
     }
@@ -361,7 +369,8 @@
         h("div", { class: "row entre" },
           h("div", { class: "corpo" }, h("h3", {}, titulo), h("div", { class: "small muted" }, detalhes.join(" · "))),
           h("div", { class: "row" },
-            v.nova ? h("span", { class: "chip ok", title: "Quando o agente trouxe esta vaga" }, "chegou " + haQuantosDias(v.criadaEm)) : null,
+            v.manual ? h("span", { class: "chip", title: "Você cadastrou esta vaga em + Adicionar vaga" }, "adicionada por você") : null,
+            v.nova && !v.manual ? h("span", { class: "chip ok", title: "Quando o agente trouxe esta vaga" }, "chegou " + haQuantosDias(v.criadaEm)) : null,
             v.vigente ? null : h("span", { class: "chip", title: "O agente não traz esta vaga desde então: o anúncio pode ter fechado" },
               v.selecionadaEm ? "fora da busca " + haQuantosDias(v.selecionadaEm) : "fora da busca"),
             h("span", { class: "chip " + classe, title: "Nota pelas suas preferências e listas" }, v.nota == null ? "sem nota" : "nota " + v.nota),
@@ -1182,6 +1191,7 @@
     ["f-fonte", "f-modalidade", "f-uf", "f-antigas"].forEach(function (id) {
       el(id).addEventListener("change", function () { if (vagas) desenharVagas(); });
     });
+    el("f-busca").addEventListener("input", function () { if (vagas) desenharVagas(); });
 
     // ---------- Navegação por hash ----------
     // A página roda num iframe do Apps Script com <base target="_top">: um link
