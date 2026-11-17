@@ -22,7 +22,7 @@ module.exports = function () {
     convite: "Me candidatei à vaga de Coordenador de NOC na Acme Telecom e coordeno 15 analistas na Quantum13. Gostaria de acompanhar o seu trabalho.",
     primeira: "Obrigado por aceitar. Me candidatei à vaga de Coordenador de NOC e, na Quantum13, o cumprimento de SLA foi de 35% para 70%. Faz sentido uma conversa de 15 minutos sobre a vaga?",
     cobranca1: "Um dado novo sobre a vaga: na Informac, o TMA foi de 8 min para 1 min com ITIL/COBIT. Se ajudar, conto como fizemos.",
-    cobranca2: "Não vou insistir. Fico à disposição se a vaga seguir em aberto. Obrigado pela atenção.",
+    cobranca2: "Oi, tudo bem? A rotina deve estar puxada com a vaga de Coordenador de NOC. Se ficou alguma dúvida sobre o meu perfil, explico numa conversa rápida. Se fizer sentido, é só me chamar!",
     conferir: ["Confira o nome de quem recebe."], ...o,
   });
 
@@ -62,8 +62,20 @@ module.exports = function () {
   r.ok(res.mensagens[0].limite === 200 && res.mensagens[0].conteudo.length <= 200 && /Hoje/.test(res.mensagens[0].quando) && /4 dias/.test(res.mensagens[2].quando) && /10 dias/.test(res.mensagens[3].quando), "limite do convite e prazos de cada mensagem");
   r.ok(res.conferir.length === 1 && res.mensagens.every((m) => m.versao === 1 && typeof m.avaliacao.nota === "number"), "lista do que conferir, versão 1 e naturalidade");
   const linhas = abas.Textos.d.filter((l) => l[1] === "usr-A" && /^recrutador_/.test(l[3]));
-  r.ok(linhas.length === 4 && linhas.every((l) => l[2] === "v:1" && l[7] === false) && linhas.find((l) => l[3] === "recrutador_convite")[5] === 200, "4 linhas em Textos com o vaga_id e o limite");
+  r.ok(linhas.length === 5 && linhas.every((l) => l[2] === "v:1" && l[7] === false) && linhas.find((l) => l[3] === "recrutador_convite")[5] === 200, "4 mensagens e a sugestão da segunda cobrança em Textos, com o vaga_id e o limite");
   r.ok(!/Ana Souza/.test(JSON.stringify(abas.Textos.d.filter((l) => l[3] === "recrutador_convite").map((l) => l.slice(0, 3)))), "o nome de quem recebe não é gravado à parte");
+
+  // Segunda cobrança: sugestão fixa do app ao lado da versão da IA (correção de 17/11).
+  r.ok(res.sugestaoCobranca2 && res.sugestaoCobranca2.conteudo === "Opa, tudo bem, Ana? Imagino que a correria esteja grande com a vaga de Coordenador de NOC. Se ficou alguma dúvida sobre o meu perfil, posso esclarecer numa conversa rápida. Se fizer sentido, é só me chamar. No mais, sigo na torcida!" && res.sugestaoCobranca2.limite === 300 && res.sugestaoCobranca2.versao === 1, "sugestão da segunda cobrança com o primeiro nome e a vaga, sem IA");
+  r.ok(ctx.sugestaoCobranca2_("", "Analista").startsWith("Opa, tudo bem? Imagino"), "sem nome: \"Opa, tudo bem?\"");
+  const longa = ctx.sugestaoCobranca2_("Ana", "Cargo ".repeat(30));
+  r.ok(longa.length <= 300 && /com a vaga. Se ficou/.test(longa), "título longo demais: a sugestão tira o título e cabe em 300");
+  r.ok(!/n[aã]o vou insistir|disposi[cç][aã]o/i.test(res.sugestaoCobranca2.conteudo), "a sugestão não usa as frases proibidas");
+  const ultimas = ctx.ultimasMensagensRecrutador(A, "v:1");
+  r.ok(ultimas.sugestaoCobranca2 && ultimas.sugestaoCobranca2.conteudo === res.sugestaoCobranca2.conteudo, "ao reabrir, a sugestão volta junto com as mensagens");
+  const autochecagem = ctx.validarMensagens_(ok({ conferir: ["Nenhum texto fala da saída do emprego, de disponibilidade ou de salário.", "Todos os textos estão no limite.", "Confira se a Ana ainda é a recrutadora da vaga."] }), "Quantum13 15 35 70 8 1");
+  r.ok(autochecagem.ok && autochecagem.resultado.conferir.length === 1 && /Ana ainda/.test(autochecagem.resultado.conferir[0]), "\"Confira antes de enviar\" sem a autochecagem da IA");
+  r.ok(/sigo na torcida/.test(req.system) && /não vou insistir/.test(req.system) && !/Diga que não vai insistir/.test(req.system), "skill: estrutura nova da segunda cobrança e as frases proibidas");
 
   // Sem nome nem gancho.
   respostasIA.push(ok());
@@ -82,6 +94,11 @@ module.exports = function () {
     ["número inventado", { primeira: "Obrigado por aceitar. Na Quantum13 reduzi o custo em 50 mil por ano. Faz sentido conversar?" }],
     ["primeira com frases demais", { primeira: "Um assunto aqui. Dois assuntos aqui. Três assuntos aqui. Quatro assuntos aqui. Cinco assuntos aqui. Seis assuntos aqui. Sete assuntos aqui. Oito assuntos aqui." }],
     ["texto vazio", { cobranca2: "  " }],
+    ["segunda cobrança com \"não vou insistir\"", { cobranca2: "Não vou insistir. Se fizer sentido, é só me chamar." }],
+    ["segunda cobrança com \"fico à disposição\"", { cobranca2: "Oi, tudo bem? Fico à disposição para conversar sobre a vaga." }],
+    ["segunda cobrança com \"agradeço a atenção\"", { cobranca2: "Oi, tudo bem? Agradeço a atenção e sigo na torcida!" }],
+    ["segunda cobrança com \"desejo sucesso\"", { cobranca2: "Oi, tudo bem? Desejo sucesso no processo." }],
+    ["segunda cobrança com \"confiante no retorno\"", { cobranca2: "Oi, tudo bem? Sigo confiante no retorno." }],
     ["campo que não é texto", { convite: 123 }],
   ];
   for (const [nome, defeito] of casos) {
@@ -110,7 +127,7 @@ module.exports = function () {
   });
   respostasIA.push(deB);
   ctx.gerarMensagensRecrutador(B, "v:2", {});
-  r.ok(abas.Textos.d.filter((l) => l[1] === "usr-B" && l[2] === "v:2" && /^recrutador_/.test(l[3])).length === 4, "B gera as próprias mensagens, na própria vaga");
+  r.ok(abas.Textos.d.filter((l) => l[1] === "usr-B" && l[2] === "v:2" && /^recrutador_/.test(l[3])).length === 5, "B gera as próprias mensagens, na própria vaga");
   r.ok(!/Coordeno 15 analistas/.test(chamadasIA.at(-1).messages[0].content) && /Fato do usuário B/.test(chamadasIA.at(-1).messages[0].content), "isolamento: B só vê os fatos de B");
   r.ok(abas.Textos.d.filter((l) => l[1] === "usr-B" && l[2] === "v:1").length === 0, "nada gravado de B na vaga de A");
   zerarLimite();

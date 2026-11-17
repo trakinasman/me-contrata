@@ -120,6 +120,44 @@ module.exports = function () {
   const vazio = ctx.numerosFunil_([]);
   r.ok(vazio.total === 0 && vazio.etapas.every((x) => x.chegaram === 0 && x.taxa === null), "funil vazio: zeros, sem dividir por zero");
 
+  // Correções dos testes no ar (17/11/2026).
+  // 13: o convite não apaga a cobrança já calculada; a segunda cobrança apaga.
+  anuncio("v7", "Convite"); estado("usr-A", "v7"); noFunil("usr-A", "v7");
+  ctx.mudarEtapa(A, "v7", "curriculo_enviado", { data: iso(1) });
+  ctx.registrarMensagemEnviada(A, "v7", "primeira", iso(1));
+  const antes = cand("usr-A", "v7")[6];
+  ctx.registrarMensagemEnviada(A, "v7", "convite", iso(1));
+  r.ok(ehData(antes) && cand("usr-A", "v7")[6] === antes, "convite registrado depois da primeira não apaga a próxima cobrança");
+  ctx.registrarMensagemEnviada(A, "v7", "cobranca2", iso(0));
+  r.ok(cand("usr-A", "v7")[6] === "", "segunda cobrança continua encerrando a cobrança");
+
+  // 14: o alerta mostra "hoje", "ontem" ou dd/mm/aaaa, nunca a data ISO.
+  cand("usr-A", "v6")[6] = ha(0);
+  f = ctx.funilDoCandidato(A);
+  r.ok(f.candidaturas.find((c) => c.vagaId === "v6").motivoAlerta === "Cobrança prevista para hoje", "alerta de cobrança de hoje diz \"hoje\"");
+  cand("usr-A", "v6")[6] = ha(1);
+  r.ok(ctx.funilDoCandidato(A).candidaturas.find((c) => c.vagaId === "v6").motivoAlerta === "Cobrança prevista para ontem", "cobrança de ontem diz \"ontem\"");
+  const d3 = ha(3);
+  const esperado = `${String(d3.getDate()).padStart(2, "0")}/${String(d3.getMonth() + 1).padStart(2, "0")}/${d3.getFullYear()}`;
+  cand("usr-A", "v6")[6] = d3;
+  const motivo = ctx.funilDoCandidato(A).candidaturas.find((c) => c.vagaId === "v6").motivoAlerta;
+  r.ok(motivo === "Cobrança prevista para " + esperado && !/T\d\d:/.test(motivo), "cobrança mais antiga: dd/mm/aaaa, sem formato ISO");
+  cand("usr-A", "v6")[6] = "";
+
+  // 16: entrar no funil depois de já ter enviado o currículo não zera o tempo parado.
+  anuncio("v8", "Tardia"); estado("usr-A", "v8"); noFunil("usr-A", "v8");
+  evento("usr-A", "v8", "inserida", 0);
+  f = ctx.mudarEtapa(A, "v8", "curriculo_enviado", { data: iso(8) });
+  const c8 = f.candidaturas.find((c) => c.vagaId === "v8");
+  r.ok(c8.diasParado === 8 && c8.alerta && /há 8 dias/.test(c8.motivoAlerta), "currículo enviado há 8 dias e inserida hoje: alerta de 8 dias");
+
+  // 11: tempo médio em dias de calendário (mesmo dia = 0, mesmo com horas diferentes).
+  const madrugada = new Date(); madrugada.setHours(0, 43, 0, 0);
+  const meioDia = new Date(); meioDia.setHours(12, 0, 0, 0);
+  const nCal = ctx.numerosFunil_([{ vagaId: "x", fonte: "Gupy", status: "curriculo_enviado", eventos: [
+    { tipo: "inserida", detalhe: "", em: madrugada }, { tipo: "curriculo_enviado", detalhe: "", em: meioDia }] }]);
+  r.ok(nCal.tempos[0].dias === 0, "inserida 00:43 e envio 12:00 do mesmo dia: 0 dia, não 0,5");
+
   // Isolamento nas ações.
   r.erro(() => ctx.registrarMensagemEnviada(B, "v1", "primeira", ""), /não está no seu funil/, "B não registra mensagem na vaga de A");
   r.erro(() => ctx.definirProximaCobranca(B, "v1", amanha), /não está no seu funil/, "B não define cobrança na vaga de A");

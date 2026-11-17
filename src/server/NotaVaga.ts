@@ -22,6 +22,8 @@ const NOTA_VAGA = {
   MAX_FICHA: 15000,
   MIN_REQUISITOS: 3,
   MAX_REQUISITOS: 12,
+  /** O resumo é cortado no fim da última frase que cabe (antes, slice(0, 260) cortava no meio da palavra). */
+  MAX_RESUMO: 400,
   TIPO_TEXTO: "vaga_nota_ia",
 };
 const PESO_IMPORTANCIA: Record<string, number> = { eliminatorio: 3, importante: 2, diferencial: 1 };
@@ -154,11 +156,14 @@ function notasDaVaga_(usuarioId: string, vagaId: string): { notaRegras: number |
   return { notaRegras, notaMinima };
 }
 
-/** Itens confirmados que mostram o que a pessoa fez e é: quem sou, provas, posições e personalidade, com rótulo F1, F2... */
+/**
+ * Itens confirmados que mostram o que a pessoa fez e sabe: quem sou, provas e posições, com rótulo F1, F2...
+ * Personalidade e tom ficam de fora: dizem como a pessoa é, não provam requisito (no teste de 17/11, "postura cordial e direta" virou prova).
+ */
 function itensDaFichaNota_(usuarioId: string): ItemFichaCv[] {
   const { cab, linhas } = lerAba_("Fichas");
   const c = (n: string) => coluna_(cab, n);
-  const secoes = ["quem_sou", "provas", "posicoes", "personalidade"];
+  const secoes = ["quem_sou", "provas", "posicoes"];
   const saida: ItemFichaCv[] = [];
   let total = 0;
   for (const l of linhas) {
@@ -191,7 +196,7 @@ function systemNota_(): string {
     "4. fonte: para atende e parcial, os rótulos dos itens de <fichas> que sustentam (ex.: [\"F3\", \"F7\"]). Para nao_confirmado, lista vazia.",
     "5. observacao: uma frase curta que liga o requisito à prova, ou diz o que falta confirmar. Número só se estiver no item citado, exatamente.",
     "6. Nada de <proibido>. Curso não é certificação. Formação em andamento não é concluída. Não afirme que a pessoa tem o que a ficha não diz.",
-    "7. resumo: até duas frases sobre o encaixe geral, sem prometer resultado nem contratação.",
+    "7. resumo: até duas frases curtas (no máximo 350 caracteres) sobre o encaixe geral, sem prometer resultado nem contratação.",
     "8. Português do Brasil, sem travessão, sem aspas curvas, sem emoji.",
     "9. conferir: até 5 pontos curtos do que o candidato deveria confirmar na ficha para melhorar o encaixe.",
   ].join("\n");
@@ -282,7 +287,18 @@ function validarNota_(r: unknown, itens: ItemFichaCv[]):
   if (requisitos.length < NOTA_VAGA.MIN_REQUISITOS) return { ok: false, motivo: `só ${requisitos.length} requisito(s)` };
   if (semFonte) avisos.push(`${semFonte} requisito(s) marcados como atendidos não citavam item da ficha e viraram "não confirmado".`);
   if (observacoesTiradas) avisos.push(`${observacoesTiradas} observação(ões) saíram: traziam número que não está no item citado.`);
-  const resumo = limparTextoPT_(String(o.resumo ?? ""), true).slice(0, 260);
+  const resumo = cortarNaFrase_(limparTextoPT_(String(o.resumo ?? ""), true), NOTA_VAGA.MAX_RESUMO);
   const conferir = (Array.isArray(o.conferir) ? o.conferir : []).map((x) => limparTextoPT_(String(x ?? ""), true).slice(0, 220)).filter((x) => x).slice(0, 5);
   return { ok: true, resultado: { requisitos, resumo, conferir, avisos } };
+}
+
+/** Corta no fim da última frase que cabe em max; sem frase inteira que caiba, corta na última palavra e põe reticências. */
+function cortarNaFrase_(texto: string, max: number): string {
+  const t = texto.trim();
+  if (t.length <= max) return t;
+  const trecho = t.slice(0, max);
+  const fim = Math.max(trecho.lastIndexOf(". "), trecho.lastIndexOf("! "), trecho.lastIndexOf("? "), /[.!?]$/.test(trecho) ? max - 1 : -1);
+  if (fim > 0) return trecho.slice(0, fim + 1);
+  const espaco = trecho.lastIndexOf(" ");
+  return (espaco > 0 ? trecho.slice(0, espaco) : trecho).replace(/[\s,;:]+$/, "") + "...";
 }

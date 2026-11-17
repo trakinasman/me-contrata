@@ -40,7 +40,7 @@ interface CandidaturaFunil {
   fonte: string;
   link: string;
   status: string;
-  /** Dias desde o último evento da vaga (qualquer tipo). */
+  /** Dias de calendário desde o último evento da vaga ("inserida" só conta se for o único). */
   diasParado: number;
   alerta: boolean;
   motivoAlerta: string;
@@ -145,9 +145,14 @@ function registrarMensagemEnviada(token: string, vagaId: unknown, tipo: unknown,
     const i = linhaDaCandidatura_(cand.linhas, cc, s.usuario_id, vagaId);
     const id = String(cand.linhas[i][cc("vaga_id")]).trim();
     registrarEvento_(s.usuario_id, id, `mensagem_${t}`, "", em);
+    // Só muda a data da cobrança quando a mensagem pede uma (primeira, cobranca1) ou encerra o contato (cobranca2).
+    // O convite não mexe: antes, ele apagava a cobrança já calculada.
     const dias = FUNIL.PROXIMA_COBRANCA[t];
-    const proxima = dias === null ? "" : new Date(em.getFullYear(), em.getMonth(), em.getDate() + dias, 12, 0, 0);
-    cand.aba.getRange(i + 2, cc("proxima_cobranca") + 1).setValue(proxima);
+    if (dias !== null) {
+      cand.aba.getRange(i + 2, cc("proxima_cobranca") + 1).setValue(new Date(em.getFullYear(), em.getMonth(), em.getDate() + dias, 12, 0, 0));
+    } else if (t === "cobranca2") {
+      cand.aba.getRange(i + 2, cc("proxima_cobranca") + 1).setValue("");
+    }
     cand.aba.getRange(i + 2, cc("atualizado_em") + 1).setValue(new Date());
     registrarLog_(s.usuario_id, "funil_mensagem", `${id}: ${t}`);
   } finally {
@@ -189,6 +194,22 @@ function linhaDaCandidatura_(linhas: unknown[][], c: (n: string) => number, usua
 }
 
 function inicioDoDia_(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0); }
+
+/**
+ * Dias de calendário de `de` até `ate` (negativo se `ate` vier antes). Ignora a hora: a entrada no funil grava a hora exata
+ * e a data escolhida pelo usuário vira meio-dia, e contar em horas dava "0,5 dias" para o mesmo dia.
+ */
+function diasEntre_(de: Date, ate: Date): number {
+  return Math.round((inicioDoDia_(ate).getTime() - inicioDoDia_(de).getTime()) / (24 * 3600 * 1000));
+}
+
+/** "hoje", "ontem" ou "dd/mm/aaaa", no fuso do script. */
+function diaLegivel_(d: Date, agora: Date): string {
+  const n = diasEntre_(d, agora);
+  if (n === 0) return "hoje";
+  if (n === 1) return "ontem";
+  return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
+}
 
 /** "aaaa-mm-dd" para o meio-dia daquele dia; erro se inválida. */
 function dataIso_(v: unknown): Date {
@@ -250,7 +271,6 @@ function funilDe_(usuarioId: string): FunilTela {
 
   const agora = new Date();
   const hoje = inicioDoDia_(agora).getTime();
-  const dia = 24 * 3600 * 1000;
   const candidaturas: CandidaturaFunil[] = [];
   const brutas: { vagaId: string; fonte: string; status: string; eventos: { tipo: string; detalhe: string; em: Date }[] }[] = [];
   for (const l of cand.linhas) {
@@ -260,14 +280,17 @@ function funilDe_(usuarioId: string): FunilTela {
     if (!v || descartadas.has(id)) continue;
     const status = String(l[cc("status")]).trim();
     const eventos = (eventosPorVaga.get(id) ?? []).slice().sort((a, b) => a.em.getTime() - b.em.getTime());
-    const ultimo = eventos.length ? eventos[eventos.length - 1].em : dataDaCelula_(l[cc("atualizado_em")]) ?? agora;
-    const diasParado = Math.max(0, Math.floor((hoje - inicioDoDia_(ultimo).getTime()) / dia));
+    // Entrar no funil é organização do candidato, não novidade da vaga: só conta quando é o único evento.
+    const reais = eventos.filter((e) => e.tipo !== "inserida");
+    const base = reais.length ? reais : eventos;
+    const ultimo = base.length ? base[base.length - 1].em : dataDaCelula_(l[cc("atualizado_em")]) ?? agora;
+    const diasParado = Math.max(0, diasEntre_(ultimo, agora));
     const prox = dataDaCelula_(l[cc("proxima_cobranca")]);
     const ativa = !TERMINAIS.includes(status);
     const naFrente = FUNIL.ETAPAS.indexOf(status) >= 1;
     let motivoAlerta = "";
     if (ativa && naFrente) {
-      if (prox && inicioDoDia_(prox).getTime() <= hoje) motivoAlerta = "Cobrança prevista para " + dataTexto_(prox);
+      if (prox && inicioDoDia_(prox).getTime() <= hoje) motivoAlerta = "Cobrança prevista para " + diaLegivel_(prox, agora);
       else if (diasParado >= FUNIL.DIAS_ALERTA) motivoAlerta = `Sem novidade há ${diasParado} dias`;
     }
     const link = String(v[cv("link")]).trim();
@@ -292,7 +315,6 @@ function funilDe_(usuarioId: string): FunilTela {
 /** Os números do funil, a partir dos eventos. Função pura: não lê planilha. */
 function numerosFunil_(vagas: { vagaId: string; fonte: string; status: string; eventos: { tipo: string; detalhe: string; em: Date }[] }[]): NumerosFunil {
   const ordem = FUNIL.ETAPAS;
-  const dia = 24 * 3600 * 1000;
   const minimo = FUNIL.MIN_AMOSTRA;
   // Etapa mais adiantada que cada vaga alcançou (pelos eventos; o status atual vale se não houver evento).
   const alcance = vagas.map((v) => {
@@ -320,7 +342,7 @@ function numerosFunil_(vagas: { vagaId: string; fonte: string; status: string; e
       const para = passos[k + 1];
       if (ordem.indexOf(para.tipo) <= ordem.indexOf(de.tipo)) continue;
       const acum = somas.get(de.tipo) ?? { total: 0, casos: 0 };
-      acum.total += Math.max(0, (para.em.getTime() - de.em.getTime()) / dia);
+      acum.total += Math.max(0, diasEntre_(de.em, para.em));
       acum.casos += 1;
       somas.set(de.tipo, acum);
     }
