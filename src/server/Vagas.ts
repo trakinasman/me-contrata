@@ -49,6 +49,8 @@ interface VagaTela {
   vigente: boolean;
   nova: boolean;
   noFunil: boolean;
+  /** Cadastrada pelo próprio candidato (+ Adicionar vaga). */
+  manual: boolean;
 }
 
 interface ListaVagas {
@@ -245,9 +247,12 @@ function vagasDoUsuario_(usuarioId: string): ListaVagas {
       vigente: id.startsWith("manual:") || (!!selecionada && agora - selecionada.getTime() <= VAGAS_TELA.DIAS_VIGENTE * dia),
       nova: !!criada && agora - criada.getTime() <= VAGAS_TELA.DIAS_NOVA * dia,
       noFunil: noFunil.has(id),
+      manual: id.startsWith("manual:"),
     });
   }
-  vagas.sort((a, b) => Number(b.vigente) - Number(a.vigente) || (b.nota ?? -1) - (a.nota ?? -1));
+  // As adicionadas pelo candidato vêm primeiro (a mais recente no topo): sem nota por regras, elas caíam no fim da lista.
+  vagas.sort((a, b) => Number(b.manual) - Number(a.manual) || (a.manual ? b.criadaEm.localeCompare(a.criadaEm) : 0) ||
+    Number(b.vigente) - Number(a.vigente) || (b.nota ?? -1) - (a.nota ?? -1));
   return {
     vagas,
     descartadas: minhas.length - ativas.length,
