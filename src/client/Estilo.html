@@ -3,12 +3,15 @@
     --bg: #f5f6f8; --surface: #ffffff; --fg: #18202e; --muted: #5e6878; --border: #dde2ea;
     --accent: #1f3864; --accent-fg: #ffffff; --bad: #b42318;
     --ok: #1a7f37; --warn: #9a6700; --warn-soft: #fff4d6; --surface-2: #eef1f5;
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #11151c; --surface: #181e28; --fg: #e5e9f0; --muted: #98a2b3; --border: #2c3546;
       --accent: #9db8ea; --accent-fg: #11151c; --bad: #f59a92;
       --ok: #6fd08c; --warn: #e3b341; --warn-soft: #2d2614; --surface-2: #222a37;
+      /* Campos nativos (data, seletor) no tema escuro: no celular, a data saía branca com texto quase invisível (E4-03). */
+      color-scheme: dark;
     }
   }
   * { box-sizing: border-box; }
@@ -31,6 +34,9 @@
   .btn { border: 1px solid var(--border); background: var(--surface); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
   .btn.prim { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
   .btn.mini { padding: 3px 10px; font-size: .85rem; }
+  /* Link com cara de botão ("Abrir anúncio"): no modo escuro ficava azul-escuro sobre fundo escuro (E4-03). */
+  a.btn { color: var(--fg); text-decoration: none; display: inline-block; }
+  input[type=date] { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--fg); }
   /* Desativado bem visível (cinza e tracejado): no teste de 16/11 o Salvar desativado parecia ativo. */
   .btn:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(1); border-style: dashed; }
   .btn.perigo { color: var(--bad); border-color: var(--bad); }

@@ -49,7 +49,7 @@ const LISTAS: Record<string, string[]> = {
   status_candidatura: ["inserida", "curriculo_enviado", "entrevista_ia", "entrevista_rh", "entrevista_gestor", "proposta", "contratado", "recusado", "desisti"],
   // Etapas do funil, descarte e o envio de cada mensagem ao recrutador (E5-06 registrada no funil, Etapa 6).
   tipo_evento: ["inserida", "curriculo_enviado", "entrevista_ia", "entrevista_rh", "entrevista_gestor", "proposta", "contratado", "recusado", "desisti", "descartada",
-    "mensagem_convite", "mensagem_primeira", "mensagem_cobranca1", "mensagem_cobranca2"],
+    "mensagem_convite", "mensagem_primeira", "mensagem_cobranca1", "mensagem_cobranca2", "retorno_recrutador"],
   status_recomendacao: ["pedido", "recebida", "aprovada"],
   tipo_curriculo: ["base", "linkedin", "adaptado"],
   modalidade: ["remoto", "hibrido", "presencial"],
