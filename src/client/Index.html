@@ -1150,7 +1150,7 @@
         h("b", { class: "small" }, titulo),
         h("p", { class: "small muted" }, "Envie uma por vez, nesta ordem. Revise antes: o nome e qualquer data ou horário."),
         h("ol", { class: "stack" }, msgs.map(function (m) {
-          return h("li", {}, h("div", { class: "row entre" }, h("span", {}, m),
+          return h("li", {}, h("div", { class: "msg-wpp" }, h("span", {}, m),
             h("button", { class: "btn mini", type: "button", onclick: function () { copiar(m, aviso); } }, "Copiar")));
         })),
         aviso,
@@ -1159,24 +1159,33 @@
 
     function modoMelhorarWpp(c) {
       var rascunho = h("textarea", { rows: "4", maxlength: "1000", placeholder: "Ex.: Bom dia, tudo bem? Gostaria de saber se houve alguma atualização sobre o processo...", "aria-label": "Sua ideia de mensagem" });
+      // Caso real de 17/11: o rascunho era a abertura da conversa e o funil já tinha o retorno do dia; sem saber quando a
+      // mensagem vai, a IA trocou o pedido por um agradecimento. A pessoa escolhe (sem pré-seleção).
+      var quando = h("select", { "aria-label": "Quando você vai mandar?" },
+        h("option", { value: "" }, "Escolha"),
+        h("option", { value: "agora" }, "Agora"),
+        h("option", { value: "revisao" }, "Já mandei, quero ver como poderia ter sido"));
       var status = h("p", { class: "small muted", role: "status" });
       var resultado = h("div", { class: "stack" });
-      var botao = h("button", { class: "btn mini prim", type: "button" }, "Analisar meu texto");
+      var botao = h("button", { class: "btn mini prim", type: "button", disabled: "disabled", title: "Diga antes quando você vai mandar" }, "Analisar meu texto");
+      quando.addEventListener("change", function () { botao.disabled = !quando.value; botao.title = quando.value ? "" : "Diga antes quando você vai mandar"; });
       botao.addEventListener("click", function () {
+        if (!quando.value) return;
         if (rascunho.value.trim().length < 10) { status.textContent = "Escreva a sua ideia de mensagem (pelo menos uma frase)."; return; }
         botao.disabled = true; status.textContent = "Lendo o seu texto..."; resultado.replaceChildren();
-        chamar("analisarRascunhoWhatsApp", [tokenAtual, c.vagaId, rascunho.value], function (r) {
+        chamar("analisarRascunhoWhatsApp", [tokenAtual, c.vagaId, rascunho.value, quando.value], function (r) {
           botao.disabled = false; status.textContent = "";
-          resultado.replaceChildren(diagnosticoWpp(c, rascunho.value, r));
+          resultado.replaceChildren(diagnosticoWpp(c, rascunho.value, quando.value, r));
         }, function (msg) { botao.disabled = false; status.textContent = msg; });
       });
       return h("div", { class: "stack" },
         h("label", { class: "small" }, "Cole aqui a sua ideia de mensagem para o recrutador, do jeito que você escreveria."),
         rascunho,
+        h("label", { class: "stack small" }, "Quando você vai mandar?", quando),
         h("div", { class: "row" }, botao), status, resultado);
     }
 
-    function diagnosticoWpp(c, rascunho, r) {
+    function diagnosticoWpp(c, rascunho, quando, r) {
       var respostas = r.perguntas.map(function (p) {
         return h("input", { type: "text", maxlength: "300", placeholder: "Sua resposta (opcional)", "aria-label": p });
       });
@@ -1187,7 +1196,7 @@
         var rs = respostas.map(function (i) { return i.value; });
         if (!rs.some(function (x) { return x.trim(); })) { status.textContent = "Responda pelo menos uma das perguntas."; return; }
         botao.disabled = true; status.textContent = "Escrevendo a versão final..."; final.replaceChildren();
-        chamar("finalizarRascunhoWhatsApp", [tokenAtual, c.vagaId, rascunho, r.perguntas, rs], function (f) {
+        chamar("finalizarRascunhoWhatsApp", [tokenAtual, c.vagaId, rascunho, r.perguntas, rs, quando], function (f) {
           status.textContent = "";
           final.replaceChildren(mensagensWpp("Versão final", f.mensagens, f.avaliacao));
         }, function (msg) { botao.disabled = false; status.textContent = msg; });
@@ -1195,6 +1204,7 @@
       return h("div", { class: "stack" },
         h("div", { class: "row" }, h("span", { class: "chip " + (r.mecanico ? "warn" : "ok") }, r.mecanico ? "Seu texto soa mecânico" : "Seu texto está bom")),
         h("p", {}, r.diagnostico),
+        r.avisoMomento ? h("p", { class: "aviso-momento small" }, h("b", {}, "Atenção ao momento: "), r.avisoMomento) : null,
         r.trechos.length ? h("div", { class: "small" }, h("b", {}, "Trechos que pesam: "),
           h("ul", {}, r.trechos.map(function (t) { return h("li", {}, t); }))) : null,
         h("details", { class: "small" }, h("summary", {}, "Naturalidade do seu texto"), desenharNaturalidade(r.avaliacaoRascunho)),

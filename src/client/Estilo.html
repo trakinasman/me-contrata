@@ -54,6 +54,12 @@
   textarea { resize: vertical; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .row.entre { justify-content: space-between; }
+  /* Modo WhatsApp: o Copiar fica sempre à direita, mesmo com mensagem longa; status vazio não abre espaço. */
+  .msg-wpp { display: flex; gap: 8px; align-items: flex-start; }
+  .msg-wpp > span { flex: 1; min-width: 0; }
+  .msg-wpp > button { flex-shrink: 0; }
+  p[role=status]:empty { display: none; }
+  .aviso-momento { border-left: 3px solid var(--warn, #b7791f); padding-left: 8px; }
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
   .tabs a { padding: 8px 12px; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; }
   .tabs a.ativo { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }

@@ -51,6 +51,8 @@ interface DiagnosticoWhatsApp {
   diagnostico: string;
   /** Trechos do rascunho que pesam (só os que existem de fato no rascunho). */
   trechos: string[];
+  /** Aviso quando o funil indica que o momento do rascunho já passou (ex.: retorno hoje). Vazio se não houver. */
+  avisoMomento: string;
   avaliacaoRascunho: AvaliacaoPT;
   mensagens: string[];
   avaliacao: AvaliacaoPT;
@@ -67,26 +69,27 @@ interface MensagensWhatsApp {
 // ---------- Funções chamadas pela página ----------
 
 /** Modo 1, 1ª chamada: diagnóstico do rascunho, versão humanizada e perguntas sobre a ideia. */
-function analisarRascunhoWhatsApp(token: string, vagaId: unknown, rascunho: unknown): DiagnosticoWhatsApp {
+function analisarRascunhoWhatsApp(token: string, vagaId: unknown, rascunho: unknown, quando: unknown): DiagnosticoWhatsApp {
   const s = exigirAceite_(token);
   const id = vagaDoCandidato_(s.usuario_id, vagaId);
   const texto = limparEntradaWhatsApp_(rascunho, WHATSAPP.MAX_RASCUNHO);
   if (texto.length < 10) throw new Error("Escreva a sua ideia de mensagem (pelo menos uma frase).");
+  const q = quandoWhatsApp_(quando);
   contarUsoWhatsApp_(s.usuario_id);
 
   const ficha = fichaParaReescrita_(s.usuario_id);
   const vaga = dadosDaVaga_(id);
-  const momento = momentoDoFunil_(s.usuario_id, id);
+  const momento = momentoDoRascunho_(s.usuario_id, id, q);
   const conteudo = [
     blocoVagaWhatsApp_(vaga),
     `<momento>\n${momento}\n</momento>`,
     `<rascunho>\n${texto}\n</rascunho>`,
     blocoFichaWhatsApp_(ficha),
-    "Diagnostique o rascunho, escreva a versão humanizada em mensagens curtas e faça de 2 a 3 perguntas sobre a ideia.",
+    "Diagnostique o rascunho, escreva a versão humanizada em mensagens curtas, com o MESMO assunto e o MESMO pedido do rascunho, e faça de 2 a 3 perguntas sobre a ideia.",
   ].join("\n\n");
   const permitido = [ficha.fatos.join(" "), vaga.titulo, vaga.empresa, texto, momento].join(" ");
 
-  let r: { mensagens: string[]; mecanico: boolean; diagnostico: string; trechos: string[]; perguntas: string[] } | null = null;
+  let r: { mensagens: string[]; mecanico: boolean; diagnostico: string; trechos: string[]; perguntas: string[]; avisoMomento: string } | null = null;
   for (let t = 1; t <= WHATSAPP.TENTATIVAS && !r; t++) {
     const resp = chamarIAJson_(s.usuario_id, "whatsapp_diagnostico", systemWhatsApp_(), conteudo, schemaDiagnosticoWhatsApp_(), "medium");
     const v = validarDiagnosticoWhatsApp_(resp, permitido, texto);
@@ -98,6 +101,8 @@ function analisarRascunhoWhatsApp(token: string, vagaId: unknown, rascunho: unkn
   registrarLog_(s.usuario_id, "whatsapp_diagnostico", `${id}: ${r.mensagens.length} mensagens, mecanico=${r.mecanico}`);
   return {
     vagaId: id, mecanico: r.mecanico, diagnostico: r.diagnostico, trechos: r.trechos,
+    // Na revisão de mensagem já enviada, o momento atual do funil não importa: sem aviso.
+    avisoMomento: q === "agora" ? r.avisoMomento : "",
     avaliacaoRascunho: avaliarTextoPT_(texto, evitar, true),
     mensagens: r.mensagens, avaliacao: avaliarTextoPT_(r.mensagens.join(" "), evitar, true),
     perguntas: r.perguntas,
@@ -105,7 +110,7 @@ function analisarRascunhoWhatsApp(token: string, vagaId: unknown, rascunho: unkn
 }
 
 /** Modo 1, 2ª chamada: versão final com as respostas da pessoa às perguntas. */
-function finalizarRascunhoWhatsApp(token: string, vagaId: unknown, rascunho: unknown, perguntas: unknown, respostas: unknown): MensagensWhatsApp {
+function finalizarRascunhoWhatsApp(token: string, vagaId: unknown, rascunho: unknown, perguntas: unknown, respostas: unknown, quando: unknown): MensagensWhatsApp {
   const s = exigirAceite_(token);
   const id = vagaDoCandidato_(s.usuario_id, vagaId);
   const texto = limparEntradaWhatsApp_(rascunho, WHATSAPP.MAX_RASCUNHO);
@@ -114,18 +119,19 @@ function finalizarRascunhoWhatsApp(token: string, vagaId: unknown, rascunho: unk
   const rs = (Array.isArray(respostas) ? respostas : []).slice(0, 3).map((x) => limparEntradaWhatsApp_(x, WHATSAPP.MAX_RESPOSTA));
   const pares = ps.map((p, i) => ({ p, r: rs[i] ?? "" })).filter((x) => x.p && x.r);
   if (!pares.length) throw new Error("Responda pelo menos uma das perguntas.");
+  const q = quandoWhatsApp_(quando);
   contarUsoWhatsApp_(s.usuario_id);
 
   const ficha = fichaParaReescrita_(s.usuario_id);
   const vaga = dadosDaVaga_(id);
-  const momento = momentoDoFunil_(s.usuario_id, id);
+  const momento = momentoDoRascunho_(s.usuario_id, id, q);
   const conteudo = [
     blocoVagaWhatsApp_(vaga),
     `<momento>\n${momento}\n</momento>`,
     `<rascunho>\n${texto}\n</rascunho>`,
     `<respostas>\n${pares.map((x) => `Pergunta: ${x.p}\nResposta: ${x.r}`).join("\n\n")}\n</respostas>`,
     blocoFichaWhatsApp_(ficha),
-    "Escreva a versão final em mensagens curtas, mantendo o jeito de falar da pessoa e usando as respostas.",
+    "Escreva a versão final em mensagens curtas, com o MESMO assunto e o MESMO pedido do rascunho, mantendo o jeito de falar da pessoa e usando as respostas.",
   ].join("\n\n");
   const permitido = [ficha.fatos.join(" "), vaga.titulo, vaga.empresa, texto, momento, pares.map((x) => x.r).join(" ")].join(" ");
   return gerarEGravarWhatsApp_(s.usuario_id, id, conteudo, permitido, ficha, "whatsapp_final");
@@ -184,6 +190,26 @@ function contarUsoWhatsApp_(usuarioId: string): void {
   cache.put(chave, String(vezes + 1), 26 * 3600);
 }
 
+/** "Quando você vai mandar?" (modo 1): agora, ou revisão de uma mensagem que já foi enviada. Sem padrão: a pessoa escolhe. */
+function quandoWhatsApp_(v: unknown): "agora" | "revisao" {
+  const q = String(v ?? "").trim();
+  if (q !== "agora" && q !== "revisao") throw new Error("Diga quando você vai mandar a mensagem.");
+  return q;
+}
+
+/**
+ * Momento para o modo 1. Caso real de 17/11: o rascunho era a abertura da conversa (pedido de feedback), mas o funil já tinha
+ * o retorno do mesmo dia, e a IA trocou o pedido por um agradecimento. Na revisão, o funil fica de fora (o que está nele pode
+ * ter acontecido depois do envio); agora, ele entra só como contexto.
+ */
+function momentoDoRascunho_(usuarioId: string, vagaId: string, quando: "agora" | "revisao"): string {
+  if (quando === "revisao") {
+    return "A pessoa está revendo uma mensagem que JÁ ENVIOU, para ver como poderia ter sido. Escreva a versão para o momento em que ela foi enviada; o que aconteceu depois não importa.";
+  }
+  return momentoDoFunil_(usuarioId, vagaId) +
+    "\nA pessoa vai mandar agora. O momento acima é só contexto: não muda o assunto nem o pedido do rascunho.";
+}
+
 /** Resumo do momento da vaga no funil (etapa, último contato, último retorno), para a IA. Vazio se a vaga não está no funil. */
 function momentoDoFunil_(usuarioId: string, vagaId: string): string {
   const c = funilDe_(usuarioId).candidaturas.find((x) => x.vagaId === vagaId);
@@ -227,6 +253,11 @@ function systemWhatsApp_(): string {
     "Formato: JSON. mensagens é a lista, na ordem de envio, de 2 a 4 mensagens curtas: a primeira é só o cumprimento",
     "(até 80 caracteres), cada uma até 300 caracteres, sem aspas em volta, sem marcação, sem link e sem emoji.",
     "Se o nome de quem recebe não foi informado, não invente: cumprimente sem nome.",
+    "",
+    "Com <rascunho>: o assunto e o pedido do rascunho ficam. Melhore o jeito de dizer, nunca troque o pedido por outro (pedir",
+    "andamento não vira agradecer). Se o <momento> mostrar que esse pedido já foi respondido ou ficou para trás (ex.: retorno do",
+    "recrutador hoje), explique isso em aviso_momento, numa frase, e sugira o que faria mais sentido agora; a versão continua com",
+    "o assunto do rascunho. Sem conflito, aviso_momento vem vazio.",
   ].join("\n");
 }
 
@@ -234,9 +265,10 @@ function schemaDiagnosticoWhatsApp_(): object {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["mecanico", "diagnostico", "trechos", "mensagens", "perguntas"],
+    required: ["mecanico", "diagnostico", "trechos", "mensagens", "perguntas", "aviso_momento"],
     properties: {
       mecanico: { type: "boolean" },
+      aviso_momento: { type: "string" },
       diagnostico: { type: "string" },
       trechos: { type: "array", items: { type: "string" } },
       mensagens: { type: "array", items: { type: "string" } },
@@ -271,7 +303,7 @@ function validarMensagensWhatsApp_(v: unknown, permitido: string): { ok: true; m
 }
 
 function validarDiagnosticoWhatsApp_(r: unknown, permitido: string, rascunho: string):
-  { ok: true; resultado: { mensagens: string[]; mecanico: boolean; diagnostico: string; trechos: string[]; perguntas: string[] } } | { ok: false; motivo: string } {
+  { ok: true; resultado: { mensagens: string[]; mecanico: boolean; diagnostico: string; trechos: string[]; perguntas: string[]; avisoMomento: string } } | { ok: false; motivo: string } {
   const o = (r ?? {}) as Record<string, unknown>;
   const m = validarMensagensWhatsApp_(o.mensagens, permitido);
   if (!m.ok) return m;
@@ -284,7 +316,8 @@ function validarDiagnosticoWhatsApp_(r: unknown, permitido: string, rascunho: st
   const base = rascunho.replace(/\s+/g, " ").toLowerCase();
   const trechos = (Array.isArray(o.trechos) ? o.trechos : []).map((x) => String(x ?? "").replace(/\s+/g, " ").trim())
     .filter((x) => x && base.includes(x.toLowerCase())).slice(0, 3);
-  return { ok: true, resultado: { mensagens: m.mensagens, mecanico: o.mecanico === true, diagnostico, trechos, perguntas } };
+  const avisoMomento = limparTextoPT_(String(o.aviso_momento ?? ""), true).slice(0, WHATSAPP.MAX_DIAGNOSTICO);
+  return { ok: true, resultado: { mensagens: m.mensagens, mecanico: o.mecanico === true, diagnostico, trechos, perguntas, avisoMomento } };
 }
 
 function gerarEGravarWhatsApp_(usuarioId: string, vagaId: string, conteudo: string, permitido: string, ficha: FichaReescrita, funcao: string): MensagensWhatsApp {
