@@ -16,7 +16,10 @@
  *   linha do tempo de cada vaga.
  */
 
-const VAGAS_TELA = { DIAS_VIGENTE: 7, DIAS_NOVA: 3, MAX_DETALHE: 200 } as const;
+const VAGAS_TELA = { DIAS_VIGENTE: 7, DIAS_NOVA: 3, MAX_DETALHE: 200, MANUAIS_POR_DIA: 20 } as const;
+
+/** Onde o candidato achou a vaga que ele mesmo cadastrou (vira a fonte, usada nos números do funil). */
+const ORIGENS_VAGA_MANUAL = ["Indicação", "Site da empresa", "LinkedIn", "Gupy", "Indeed", "Catho", "InfoJobs", "Sólides", "InHire", "WhatsApp ou grupo", "Outro"];
 
 /** Quatro motivos agrupados e "Outro", com detalhe (decidido em 14/11/2026). */
 const MOTIVOS_DESCARTE = [
@@ -53,6 +56,8 @@ interface ListaVagas {
   descartadas: number;
   motivosDescarte: string[];
   diasVigente: number;
+  /** Opções de origem para a vaga cadastrada pelo candidato. */
+  origensManual: string[];
 }
 
 // ---------- Funções chamadas pela página ----------
@@ -81,6 +86,64 @@ function descartarVaga(token: string, vagaId: unknown, motivo: unknown, detalhe:
     aba.getRange(i + 2, c("motivo_descarte") + 1).setValue(celulaTexto_(texto));
     registrarEvento_(s.usuario_id, String(linhas[i][c("vaga_id")]).trim(), "descartada", texto);
     registrarLog_(s.usuario_id, "vaga_descartada", `${String(vagaId)}: ${m}`);
+  } finally {
+    lock.releaseLock();
+  }
+  return vagasDoUsuario_(s.usuario_id);
+}
+
+/**
+ * Vaga cadastrada pelo próprio candidato (achada fora do agente: indicação, site da empresa, um e-mail do Indeed).
+ * Entra no catálogo com id "manual:<uuid>" (o agente nunca gera esse prefixo, então não há conflito) e na lista do
+ * candidato sem nota por regras; fica sempre visível (não expira como as do agente). Caso real: Serprol, 17/11/2026.
+ */
+function adicionarVaga(token: string, dados: unknown): ListaVagas {
+  const s = exigirAceite_(token);
+  const d = (dados ?? {}) as Record<string, unknown>;
+  const limpo = (v: unknown, max: number): string => String(v ?? "").replace(/[<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+  const titulo = limpo(d.titulo, 200);
+  const empresa = limpo(d.empresa, 120);
+  if (!titulo) throw new Error("Escreva o título da vaga.");
+  if (!empresa) throw new Error("Escreva o nome da empresa.");
+  const link = linkDeVagaLimpo_(String(d.link ?? ""));
+  const local = limpo(d.local, 120);
+  const modalidade = String(d.modalidade ?? "").trim();
+  if (modalidade && !LISTAS.modalidade.includes(modalidade)) throw new Error("Modalidade inválida.");
+  const fonte = String(d.fonte ?? "").trim() || fonteDoLink_(link);
+  if (!ORIGENS_VAGA_MANUAL.includes(fonte)) throw new Error("Origem inválida.");
+
+  const cache = CacheService.getScriptCache();
+  const chave = `vgm:${s.usuario_id}:${Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyyMMdd")}`;
+  const vezes = Number(cache.get(chave) || 0);
+  if (vezes >= VAGAS_TELA.MANUAIS_POR_DIA) throw new Error("Limite de vagas adicionadas hoje atingido. Tente amanhã.");
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    if (link) {
+      const cat = lerAba_("Vagas");
+      const cv = (n: string) => coluna_(cat.cab, n);
+      const mesmas = new Set(cat.linhas.filter((l) => String(l[cv("link")]).trim() === link).map((l) => String(l[cv("vaga_id")]).trim()));
+      if (mesmas.size) {
+        const est = lerAba_("VagasCandidato");
+        const ce = (n: string) => coluna_(est.cab, n);
+        if (est.linhas.some((l) => String(l[ce("usuario_id")]).trim() === s.usuario_id && mesmas.has(String(l[ce("vaga_id")]).trim()))) {
+          throw new Error("Você já tem esta vaga na lista (mesmo link).");
+        }
+      }
+    }
+    const agora = new Date();
+    const id = `manual:${Utilities.getUuid()}`;
+    anexarLinha_("Vagas", {
+      vaga_id: id, fonte, fonte_id: id.slice(7), empresa, titulo, link, local, modalidade,
+      publicada_em: "", coletada_em: agora, vista_por_ultimo_em: agora,
+    });
+    anexarLinha_("VagasCandidato", {
+      usuario_id: s.usuario_id, vaga_id: id, nota_regras: "", motivos: "adicionada por você", nota_ia: "",
+      descartada: false, motivo_descarte: "", vista_em: agora, selecionada_em: agora,
+    });
+    cache.put(chave, String(vezes + 1), 26 * 3600);
+    registrarLog_(s.usuario_id, "vaga_manual", id);
   } finally {
     lock.releaseLock();
   }
@@ -178,7 +241,8 @@ function vagasDoUsuario_(usuarioId: string): ListaVagas {
       motivos: String(l[ce("motivos")]).split(";").map((m) => m.trim()).filter((m) => m),
       selecionadaEm: selecionada ? selecionada.toISOString() : "",
       criadaEm: criada ? criada.toISOString() : "",
-      vigente: !!selecionada && agora - selecionada.getTime() <= VAGAS_TELA.DIAS_VIGENTE * dia,
+      // Vaga cadastrada pelo candidato não expira: o agente não a traz de novo para "renovar".
+      vigente: id.startsWith("manual:") || (!!selecionada && agora - selecionada.getTime() <= VAGAS_TELA.DIAS_VIGENTE * dia),
       nova: !!criada && agora - criada.getTime() <= VAGAS_TELA.DIAS_NOVA * dia,
       noFunil: noFunil.has(id),
     });
@@ -189,7 +253,35 @@ function vagasDoUsuario_(usuarioId: string): ListaVagas {
     descartadas: minhas.length - ativas.length,
     motivosDescarte: MOTIVOS_DESCARTE,
     diasVigente: VAGAS_TELA.DIAS_VIGENTE,
+    origensManual: ORIGENS_VAGA_MANUAL,
   };
+}
+
+/**
+ * Link do anúncio digitado pelo candidato: só https, sem espaço nem aspas. Indeed e LinkedIn perdem os parâmetros de
+ * rastreamento do e-mail (o link da Serprol tinha mais de 300 caracteres; o que importa é o jk / o id da vaga).
+ */
+function linkDeVagaLimpo_(bruto: string): string {
+  const t = bruto.trim();
+  if (!t) return "";
+  if (!/^https:\/\/[^\s"'<>]+$/i.test(t) || t.length > 1000) throw new Error("O link precisa começar com https:// (ou deixe em branco).");
+  const indeed = t.match(/^https:\/\/([a-z]{2,3}\.)?indeed\.com\/[^?#]*\?(?:[^#]*&)?(?:jk|vjk)=([A-Za-z0-9]+)/i);
+  if (indeed) return `https://${indeed[1] ?? ""}indeed.com/viewjob?jk=${indeed[2]}`;
+  const linkedin = t.match(/^https:\/\/(?:[a-z]+\.)?linkedin\.com\/jobs\/view\/(?:[^/?#]*?-)?(\d+)/i);
+  if (linkedin) return `https://www.linkedin.com/jobs/view/${linkedin[1]}/`;
+  return t;
+}
+
+/** Origem sugerida pelo link (o candidato pode trocar). */
+function fonteDoLink_(link: string): string {
+  if (/indeed\.com/i.test(link)) return "Indeed";
+  if (/linkedin\.com/i.test(link)) return "LinkedIn";
+  if (/gupy\.io/i.test(link)) return "Gupy";
+  if (/catho\.com/i.test(link)) return "Catho";
+  if (/infojobs\.com/i.test(link)) return "InfoJobs";
+  if (/solides\.(com|jobs)/i.test(link)) return "Sólides";
+  if (/inhire\./i.test(link)) return "InHire";
+  return link ? "Site da empresa" : "Outro";
 }
 
 /** UF do local: "Cidade/UF", "Cidade - UF" ou só a sigla. Vazio se não der para saber. */

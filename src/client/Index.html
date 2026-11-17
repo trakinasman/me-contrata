@@ -93,7 +93,9 @@
           <h1>Vagas</h1>
           <span class="small muted" id="resumo-vagas"></span>
         </div>
-        <p class="muted small">As vagas que o agente selecionou para você, com a nota e o porquê. Descartar esconde a vaga para sempre: o agente não a traz de novo.</p>
+        <p class="muted small">As vagas que o agente selecionou para você, com a nota e o porquê. Descartar esconde a vaga para sempre: o agente não a traz de novo. Achou uma vaga em outro lugar (indicação, site da empresa, e-mail)? Use "+ Adicionar vaga".</p>
+        <div class="row"><button id="bt-adicionar-vaga" class="btn mini" type="button">+ Adicionar vaga</button></div>
+        <div id="form-adicionar-vaga" class="card stack" hidden></div>
         <div class="row filtros">
           <div><label for="f-fonte">Fonte</label><select id="f-fonte"></select></div>
           <div><label for="f-modalidade">Modalidade</label><select id="f-modalidade"></select></div>
@@ -1129,6 +1131,46 @@
       var alertas = funil.candidaturas.filter(function (c) { return c.alerta; }).length;
       el("resumo-funil").textContent = alertas ? alertas + (alertas === 1 ? " vaga pede atenção" : " vagas pedem atenção") : "";
     }
+
+    // Vaga achada fora do agente (E5, 17/11/2026). O servidor valida tudo e limpa o link; aqui é só o formulário.
+    function abrirAdicionarVaga() {
+      var caixa = el("form-adicionar-vaga");
+      if (!caixa.hidden) { caixa.hidden = true; return; }
+      var titulo = h("input", { type: "text", maxlength: "200", placeholder: "Título da vaga, como no anúncio", "aria-label": "Título da vaga" });
+      var empresa = h("input", { type: "text", maxlength: "120", placeholder: "Empresa", "aria-label": "Empresa" });
+      var link = h("input", { type: "text", maxlength: "1000", placeholder: "Link do anúncio (opcional, começa com https://)", "aria-label": "Link do anúncio" });
+      var local = h("input", { type: "text", maxlength: "120", placeholder: "Cidade/UF (opcional), ex.: Florianópolis/SC", "aria-label": "Cidade e UF" });
+      var modalidade = h("select", { "aria-label": "Modalidade" }, [h("option", { value: "" }, "Modalidade (opcional)")].concat(
+        ["remoto", "hibrido", "presencial"].map(function (m) { return h("option", { value: m }, NOME_MODALIDADE[m]); })));
+      var fonte = h("select", { "aria-label": "Onde achou a vaga" }, [h("option", { value: "" }, "Onde achou (o link sugere)")].concat(
+        ((vagas && vagas.origensManual) || []).map(function (o) { return h("option", { value: o }, o); })));
+      var erro = h("p", { class: "erro", role: "alert" });
+      var salvar = h("button", { class: "btn mini prim", type: "button" }, "Adicionar");
+      salvar.addEventListener("click", function () {
+        erro.textContent = "";
+        salvar.disabled = true;
+        salvar.textContent = "Adicionando…";
+        chamar("adicionarVaga", [tokenAtual, { titulo: titulo.value, empresa: empresa.value, link: link.value, local: local.value, modalidade: modalidade.value, fonte: fonte.value }], function (r) {
+          vagas = r;
+          caixa.hidden = true;
+          montarFiltros();
+          desenharVagas();
+          avisarVagas("Vaga adicionada. Ela fica na lista até você descartar; use \"Mover para o funil\" se já se candidatou.");
+        }, function (msg) {
+          erro.textContent = msg;
+          salvar.disabled = false;
+          salvar.textContent = "Adicionar";
+        });
+      });
+      caixa.replaceChildren(
+        h("b", {}, "Adicionar vaga"),
+        h("p", { class: "small muted" }, "Para vagas achadas fora do agente. Depois de adicionar, dá para salvar a descrição, adaptar os textos e mover para o funil, como nas outras."),
+        titulo, empresa, link, h("div", { class: "row" }, local, modalidade, fonte), erro,
+        h("div", { class: "row" }, salvar, h("button", { class: "btn mini", type: "button", onclick: function () { caixa.hidden = true; } }, "Cancelar")));
+      caixa.hidden = false;
+      titulo.focus();
+    }
+    el("bt-adicionar-vaga").addEventListener("click", abrirAdicionarVaga);
 
     var timerVagas = null;
     function avisarVagas(texto) {
