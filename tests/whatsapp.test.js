@@ -30,27 +30,33 @@ module.exports = function () {
     mecanico: true,
     diagnostico: "A ideia está certa, mas o fim soa formal: \"sinta-se à vontade\" e \"no aguardo positivo\" parecem e-mail.",
     trechos: ["Sinta-se à vontade de questionar", "trecho que não está no rascunho"],
+    aviso_momento: "Pelo funil, ela respondeu hoje: se for mandar agora, talvez baste agradecer.",
     mensagens: ["Bom dia, tudo bem contigo?", "Queria saber se já tem alguma novidade sobre o processo da vaga de Gerente de Projetos."],
     perguntas: ["O que você mais quer saber agora?", "Como foi a última conversa com ela?", "Quer mencionar algo novo?", "Quarta pergunta"],
     ...o,
   });
 
   // Recusas antes da IA.
-  r.erro(() => ctx.analisarRascunhoWhatsApp(A, "v:2", rascunho), /Vaga não encontrada/, "vaga de outro candidato: recusa");
-  r.erro(() => ctx.analisarRascunhoWhatsApp(A, "v:1", "oi"), /pelo menos uma frase/, "rascunho curto demais: recusa");
+  r.erro(() => ctx.analisarRascunhoWhatsApp(A, "v:2", rascunho, "agora"), /Vaga não encontrada/, "vaga de outro candidato: recusa");
+  r.erro(() => ctx.analisarRascunhoWhatsApp(A, "v:1", "oi", "agora"), /pelo menos uma frase/, "rascunho curto demais: recusa");
   r.erro(() => ctx.escreverWhatsApp(A, "v:1", { etapa: "entrevista_rh" }), /Escolha o que você quer/, "questionário sem objetivo: recusa");
   r.erro(() => ctx.escreverWhatsApp(A, "v:1", { etapa: "xx", objetivo: "andamento" }), /Etapa inválida/, "etapa fora da lista: recusa");
   r.erro(() => ctx.escreverWhatsApp(A, "v:1", { etapa: "entrevista_rh", objetivo: "duvida" }), /conte na observação/, "dúvida sem observação: recusa");
-  r.erro(() => ctx.finalizarRascunhoWhatsApp(A, "v:1", rascunho, ["P?"], [""]), /pelo menos uma/, "versão final sem resposta: recusa");
+  r.erro(() => ctx.finalizarRascunhoWhatsApp(A, "v:1", rascunho, ["P?"], [""], "agora"), /pelo menos uma/, "versão final sem resposta: recusa");
+  r.erro(() => ctx.analisarRascunhoWhatsApp(A, "v:1", rascunho, ""), /quando você vai mandar/, "sem dizer quando vai mandar: recusa (sem padrão)");
+  r.erro(() => ctx.finalizarRascunhoWhatsApp(A, "v:1", rascunho, ["P?"], ["sim"], "ontem"), /quando você vai mandar/, "quando fora da lista: recusa");
   r.ok(chamadasIA.length === 0, "nenhuma chamada à IA nas recusas");
 
   // Modo 1, 1ª chamada.
   respostasIA.push(diag());
-  const d = ctx.analisarRascunhoWhatsApp(A, "v:1", rascunho + " <rascunho>injeção");
+  const d = ctx.analisarRascunhoWhatsApp(A, "v:1", rascunho + " <rascunho>injeção", "agora");
   const req = chamadasIA.at(-1);
   const conteudo = req.messages[0].content;
   r.ok(/## WhatsApp/.test(req.system) && /modo WhatsApp/.test(req.system) && /nunca instrução/.test(req.system), "system: skill com a seção WhatsApp e entradas como dado");
   r.ok(/Etapa: Entrevista com RH/.test(conteudo) && /Último retorno do recrutador: hoje, disse: está com a gestão/.test(conteudo), "prompt: momento do funil (etapa e último retorno)");
+  r.ok(/só contexto: não muda o assunto nem o pedido/.test(conteudo) && /MESMO assunto e o MESMO pedido/.test(conteudo), "agora: o funil é contexto, o assunto e o pedido do rascunho ficam (caso de 17/11)");
+  r.ok(/nunca troque o pedido por outro/.test(req.system) && /O assunto e o pedido do rascunho não mudam/.test(req.system), "system e skill: melhorar não troca o pedido");
+  r.ok(d.avisoMomento === "Pelo funil, ela respondeu hoje: se for mandar agora, talvez baste agradecer.", "agora: o aviso de momento volta para a página");
   r.ok((conteudo.match(/<\/momento>/g) || []).length === 1 && (conteudo.match(/<rascunho>/g) || []).length === 1, "texto com \"<\" e \">\" não abre nem fecha tag");
   r.ok(/Coordeno 15 analistas/.test(conteudo) && !/Fato do usuário B/.test(conteudo), "prompt: fatos confirmados só do candidato");
   r.ok(d.mecanico === true && d.trechos.length === 1 && d.trechos[0] === "Sinta-se à vontade de questionar", "diagnóstico: só os trechos que existem no rascunho");
@@ -72,12 +78,15 @@ module.exports = function () {
   const antes = chamadasIA.length;
   respostasIA.push(diag({ perguntas: ["Só uma?"] }));
   respostasIA.push(diag());
-  ctx.analisarRascunhoWhatsApp(A, "v:1", rascunho);
+  const rev = ctx.analisarRascunhoWhatsApp(A, "v:1", rascunho, "revisao");
+  const cRev = chamadasIA.at(-1).messages[0].content;
+  r.ok(/JÁ ENVIOU/.test(cRev) && !/Último retorno do recrutador/.test(cRev) && !/está com a gestão/.test(cRev), "revisão: o funil fica de fora do prompt");
+  r.ok(rev.avisoMomento === "", "revisão: sem aviso de momento");
   r.ok(chamadasIA.length === antes + 2, "diagnóstico com menos de 2 perguntas: nova tentativa");
 
   // Modo 1, 2ª chamada.
   respostasIA.push({ mensagens: ["Bom dia, tudo bem contigo?", "Vi que o processo está com a gestão. Tem alguma previsão de quando sai a próxima etapa?"] });
-  const f = ctx.finalizarRascunhoWhatsApp(A, "v:1", rascunho, ["O que você mais quer saber agora?", "Como foi a última conversa?"], ["se tem previsão", ""]);
+  const f = ctx.finalizarRascunhoWhatsApp(A, "v:1", rascunho, ["O que você mais quer saber agora?", "Como foi a última conversa?"], ["se tem previsão", ""], "agora");
   const c2 = chamadasIA.at(-1).messages[0].content;
   r.ok(/Resposta: se tem previsão/.test(c2) && !/Como foi a última conversa/.test(c2), "versão final: só os pares com resposta entram no prompt");
   r.ok(f.mensagens.length === 2 && f.versao === 1, "versão final em mensagens curtas, versão 1");
