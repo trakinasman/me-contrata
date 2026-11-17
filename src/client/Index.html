@@ -1067,13 +1067,11 @@
       etapa.addEventListener("change", ajustar);
       ajustar();
 
-      var tipoMsg = h("select", { "aria-label": "Mensagem enviada" }, TIPOS_MENSAGEM_FUNIL.map(function (t) { return h("option", { value: t[0] }, t[1]); }));
-      // Já vem com a mensagem seguinte à última registrada (a ordem da lista é a ordem do contato).
-      var ultimaMsg = -1;
-      c.eventos.forEach(function (e) {
-        TIPOS_MENSAGEM_FUNIL.forEach(function (t, k) { if (e.tipo === "mensagem_" + t[0]) ultimaMsg = Math.max(ultimaMsg, k); });
-      });
-      tipoMsg.value = TIPOS_MENSAGEM_FUNIL[Math.min(ultimaMsg + 1, TIPOS_MENSAGEM_FUNIL.length - 1)][0];
+      // Sem pré-seleção: a pessoa escolhe qual mensagem mandou (o botão só libera depois da escolha).
+      var tipoMsg = h("select", { "aria-label": "Mensagem enviada" }, [h("option", { value: "" }, "Escolha a mensagem enviada")].concat(TIPOS_MENSAGEM_FUNIL.map(function (t) { return h("option", { value: t[0] }, t[1]); })));
+      tipoMsg.value = "";
+      var btnMsg = h("button", { class: "btn mini", type: "button", disabled: "disabled", title: "Escolha antes qual mensagem foi enviada", onclick: function () { if (tipoMsg.value) acaoFunil("registrarMensagemEnviada", [c.vagaId, tipoMsg.value, dataMsg.value]); } }, "Registrar mensagem");
+      tipoMsg.addEventListener("change", function () { btnMsg.disabled = !tipoMsg.value; btnMsg.title = tipoMsg.value ? "" : "Escolha antes qual mensagem foi enviada"; });
       var dataMsg = h("input", { type: "date", max: hojeIso(), value: hojeIso(), "aria-label": "Data do envio da mensagem" });
       var dataRet = h("input", { type: "date", max: hojeIso(), value: hojeIso(), "aria-label": "Data do retorno do recrutador" });
       var notaRet = h("input", { type: "text", maxlength: "200", placeholder: "O que disse, em resumo (ex.: está com a gestão, avisa quando tiver novidade)", "aria-label": "Resumo do retorno" });
@@ -1092,8 +1090,7 @@
         h("div", { class: "stack bloco-funil" },
           h("b", {}, "2. Mensagem ao recrutador"),
           h("p", { class: "small muted" }, "Mandou uma mensagem? Registre qual foi e quando: a próxima cobrança é calculada sozinha."),
-          h("div", { class: "row" }, tipoMsg, dataMsg,
-            h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("registrarMensagemEnviada", [c.vagaId, tipoMsg.value, dataMsg.value]); } }, "Registrar mensagem"))),
+          h("div", { class: "row" }, tipoMsg, dataMsg, btnMsg)),
         h("div", { class: "stack bloco-funil" },
           h("b", {}, "3. O recrutador respondeu"),
           h("p", { class: "small muted" }, "Registre o retorno e o que foi dito: a próxima cobrança passa para 7 dias depois."),
