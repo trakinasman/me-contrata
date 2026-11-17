@@ -232,7 +232,10 @@ function systemCurriculo_(): string {
     "2. Número, percentual e data saem exatamente como no item. Nunca derive (não crie \"queda de 87%\" a partir de \"8 para 1\"),",
     "   não arredonde, não some períodos, não converta unidades.",
     "3. Não junte dois fatos de modo que mude o que cada um diz: cada ferramenta, número e resultado fica ligado só ao que o item diz.",
-    "4. Nada de <proibido>. Curso não é certificação. Formação em andamento não é concluída.",
+    "4. Nada de <proibido>. Curso não é certificação: liste em cursos, sem chamar de certificação e sem ressalva no texto (nada de",
+    "   \"(não é certificação)\"). Formação em andamento não é concluída.",
+    "   Dois cargos na mesma empresa: o anterior termina quando o seguinte começa (ex.: \"nov/2025 a mar/2026\" e \"desde mar/2026\");",
+    "   só o cargo atual fica com \"desde\".",
     "5. Tópicos: sem pronome, começam com verbo no passado ou com o resultado; resultado com número primeiro; até " + CURRICULO_PDF.MAX_TEXTO +
       " caracteres, e o que passar disso é descartado: divida em dois tópicos em vez de apertar; sem adjetivo de elogio (\"proativo\", \"excelente\"). Escolha o que mais pesa para a vaga.",
     "6. Experiências em ordem cronológica inversa. Até " + CURRICULO_PDF.MAX_TOPICOS + " tópicos por experiência; cargo com mais de dez anos, até 2.",
@@ -366,9 +369,13 @@ function validarCurriculo_(r: unknown, itens: ItemFichaCv[], resumo: string): { 
   }
   if (experienciasTiradas) avisos.push(`${experienciasTiradas} experiência(s) saíram: empresa que não está na ficha ou sem item que a sustente.`);
   if (!cv.experiencias.length) return null;
+  fecharPeriodosNaMesmaEmpresa_(cv.experiencias);
 
-  cv.formacao = comFonte(o.formacao, "formação");
-  cv.cursos = comFonte(o.cursos, "cursos");
+  // A ressalva "(não é certificação)" é para a IA, não para o recrutador (teste de 17/11): sai do texto.
+  const semRessalva = (t: string): string => t.replace(/\s*\(\s*n[aã]o\s+[eé]\s+(uma\s+)?certifica[cç][aã]o\s*\)/gi, "").trim();
+  cv.formacao = comFonte(o.formacao, "formação").map(semRessalva);
+  cv.cursos = comFonte(o.cursos, "cursos").map(semRessalva);
+  for (const x of cv.experiencias) x.topicos = x.topicos.map(semRessalva);
   const vistas = new Set<string>();
   for (const x of Array.isArray(o.competencias) ? o.competencias : []) {
     const c = texto(x, 40);
@@ -379,7 +386,46 @@ function validarCurriculo_(r: unknown, itens: ItemFichaCv[], resumo: string): { 
     if (cv.competencias.length >= CURRICULO_PDF.MAX_COMPETENCIAS) break;
   }
   const conferir = (Array.isArray(o.conferir) ? o.conferir : []).map((x) => texto(x, 300)).filter((x) => x).slice(0, 6);
+  // A cidade já está no cabeçalho; o resumo vem pronto (texto do candidato), então só avisa.
+  if (cv.cidade && semAcentoCv_(resumo).includes(semAcentoCv_(cv.cidade.replace(/\s*\(.*\)\s*$/, "")))) {
+    conferir.push(`O resumo repete a cidade (${cv.cidade}), que já está no cabeçalho. Se quiser, tire do resumo e gere de novo.`);
+  }
   return { cv, avisos, conferir };
+}
+
+const MESES_CV_ = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/** "desde nov/2025" ou "nov/2025": o início do período (mês e ano, como texto e como número para ordenar). */
+function inicioDoPeriodo_(periodo: string): { texto: string; chave: number } | null {
+  const m = semAcentoCv_(periodo).match(/^(?:desde\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\.?\s*(?:\/|de\s+)?(\d{4})$/);
+  if (!m) return null;
+  const texto = periodo.trim().replace(/^desde\s+/i, "");
+  return { texto, chave: Number(m[2]) * 12 + MESES_CV_.indexOf(m[1]) };
+}
+
+/**
+ * Dois ou mais cargos na mesma empresa com "desde": o anterior termina quando o seguinte começa
+ * ("Analista N3 (desde nov/2025)" vira "nov/2025 a mar/2026"). Só mexe quando entende todos os períodos da empresa.
+ */
+function fecharPeriodosNaMesmaEmpresa_(experiencias: { empresa: string; periodo: string }[]): void {
+  const porEmpresa = new Map<string, { e: { empresa: string; periodo: string }; inicio: { texto: string; chave: number } }[]>();
+  for (const e of experiencias) {
+    if (!/^desde\s/i.test(e.periodo.trim())) continue;
+    const inicio = inicioDoPeriodo_(e.periodo);
+    if (!inicio) continue;
+    const k = semAcentoCv_(e.empresa).trim();
+    const lista = porEmpresa.get(k) ?? [];
+    lista.push({ e, inicio });
+    porEmpresa.set(k, lista);
+  }
+  for (const lista of porEmpresa.values()) {
+    if (lista.length < 2) continue;
+    lista.sort((a, b) => a.inicio.chave - b.inicio.chave);
+    for (let i = 0; i + 1 < lista.length; i++) {
+      if (lista[i].inicio.chave >= lista[i + 1].inicio.chave) continue;
+      lista[i].e.periodo = `${lista[i].inicio.texto} a ${lista[i + 1].inicio.texto}`;
+    }
+  }
 }
 
 // ---------- HTML e PDF ----------
@@ -391,23 +437,28 @@ function escaparHtml_(t: string): string {
 /** HTML do currículo: uma coluna, sem tabela e sem cor, texto selecionável. Tudo que vem da IA ou da ficha é escapado. */
 function htmlCurriculo_(cv: CurriculoCv): string {
   const e = escaparHtml_;
-  const secao = (titulo: string, corpo: string): string => (corpo ? `<h2>${e(titulo)}</h2>${corpo}` : "");
+  // O título da seção fica preso ao primeiro bloco dela (div que não quebra): antes, "COMPETÊNCIAS" ficou no pé da
+  // página 1 e a lista sozinha na página 2. Cada experiência também é um bloco que não quebra.
+  const secao = (titulo: string, primeiro: string, resto = ""): string =>
+    (primeiro ? `<div class="bloco"><h2>${e(titulo)}</h2>${primeiro}</div>${resto}` : "");
   const lista = (itens: string[]): string => (itens.length ? `<ul>${itens.map((i) => `<li>${e(i)}</li>`).join("")}</ul>` : "");
   const contato = [cv.email, cv.cidade].filter((x) => x).map(e).join(" | ");
   const experiencias = cv.experiencias.map((x) => {
     const linha = [x.cargo, x.empresa].filter((p) => p).map(e).join(", ");
     return `<p class="cargo"><b>${linha}</b>${x.periodo ? ` <span>(${e(x.periodo)})</span>` : ""}</p>${lista(x.topicos)}`;
-  }).join("");
+  });
+  const blocoExp = (h: string): string => `<div class="bloco">${h}</div>`;
   return [
     "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Currículo</title><style>",
     "body{font-family:Arial,Helvetica,sans-serif;font-size:10pt;line-height:1.35;color:#000;margin:0}",
     "h1{font-size:18pt;margin:0 0 2pt 0}h2{font-size:11pt;margin:12pt 0 4pt 0;border-bottom:1px solid #000;text-transform:uppercase}",
     "p{margin:0 0 4pt 0}.cargo{margin-top:6pt}ul{margin:2pt 0 4pt 16pt;padding:0}li{margin:0 0 2pt 0}",
+    "h2{page-break-after:avoid;break-after:avoid}.bloco{page-break-inside:avoid;break-inside:avoid}",
     "</style></head><body>",
     cv.nome ? `<h1>${e(cv.nome)}</h1>` : "",
     contato ? `<p>${contato}</p>` : "",
     secao("Resumo", `<p>${e(cv.resumo).replace(/\n+/g, "</p><p>")}</p>`),
-    secao("Experiência profissional", experiencias),
+    secao("Experiência profissional", experiencias[0] ?? "", experiencias.slice(1).map(blocoExp).join("")),
     secao("Formação", lista(cv.formacao)),
     secao("Cursos", lista(cv.cursos)),
     secao("Competências", cv.competencias.length ? `<p>${cv.competencias.map(e).join(", ")}</p>` : ""),

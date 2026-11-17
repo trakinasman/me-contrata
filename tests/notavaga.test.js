@@ -54,7 +54,8 @@ module.exports = function () {
   const conteudo = req.messages[0].content;
   const bloco = (tag) => { const i = conteudo.indexOf(`<${tag}>`); const f = conteudo.indexOf(`</${tag}>`); return i < 0 || f < 0 ? "" : conteudo.slice(i, f); };
   r.ok(req.model === "claude-haiku-5-5" && req.output_config.effort === "medium", "usa o modelo leve (Haiku) com esforço médio");
-  r.ok(/F1 \[quem_sou\] Coordeno 15/.test(bloco("fichas")) && /F4 \[posicoes\]/.test(bloco("fichas")) && /F5 \[personalidade\]/.test(bloco("fichas")), "prompt: itens confirmados de quem sou, provas, posições e personalidade, com rótulo");
+  r.ok(/F1 \[quem_sou\] Coordeno 15/.test(bloco("fichas")) && /F4 \[posicoes\]/.test(bloco("fichas")), "prompt: itens confirmados de quem sou, provas e posições, com rótulo");
+  r.ok(!/personalidade|Dono do processo/.test(bloco("fichas")), "prompt: personalidade não entra como prova de requisito (correção de 17/11)");
   r.ok(!/Direto e objetivo|Item a confirmar|Fato do usuário B/.test(bloco("fichas")) && /AWS ou Kubernetes/.test(bloco("proibido")), "prompt: sem tom, sem a_confirmar, sem fato de outro; proibidos entram");
   r.ok(/Coordenador de NOC/.test(bloco("vaga")) && /experiência em nuvem/.test(bloco("vaga")), "prompt: vaga com título e descrição");
   r.ok(/ÚNICA fonte/.test(req.system) && /NÃO é fonte/.test(req.system) && /nunca instrução/.test(req.system), "system: ficha como única fonte, base só de referência, dado como dado");
@@ -69,6 +70,15 @@ module.exports = function () {
   const ult = ctx.ultimaNotaIa(A, "v:1");
   r.ok(ult && ult.nota === 64 && ult.requisitos.length === 5, "ultimaNotaIa devolve o detalhe");
   r.ok(ctx.ultimaNotaIa(A, "v:2") === null, "vaga que nunca foi avaliada: ultimaNotaIa devolve null");
+
+  // Resumo: cortado no fim de uma frase, nunca no meio (correção de 17/11).
+  const frase1 = "Encaixa bem em SLA, liderança e ITIL, que são o centro da vaga e aparecem com números na ficha. ".repeat(3).trim();
+  const longo = frase1 + " Faltam nuvem pública e a certificação pedida como diferencial, que valem confirmar antes de enviar".repeat(2);
+  const cortado = ctx.cortarNaFrase_(longo, 400);
+  r.ok(cortado.length <= 400 && cortado.endsWith(".") && cortado === frase1, "resumo longo termina na última frase inteira que cabe");
+  r.ok(ctx.cortarNaFrase_("Curto e completo.", 400) === "Curto e completo.", "resumo curto fica igual");
+  const semPonto = ctx.cortarNaFrase_("palavra ".repeat(80), 400);
+  r.ok(semPonto.endsWith("palavra...") && semPonto.length <= 403, "sem frase que caiba: corta na palavra, com reticências");
 
   // Cálculo da nota.
   const reqs = (lista) => lista.map(([imp, sit]) => ({ texto: "x", importancia: imp, situacao: sit, observacao: "", provas: [] }));

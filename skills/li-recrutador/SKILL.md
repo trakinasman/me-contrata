@@ -78,8 +78,19 @@ Cada texto sai com a contagem de caracteres ao lado.
 - **Primeira (4 dias):** acrescente algo novo, como um fato confirmado que não estava
   na mensagem anterior ou uma resposta ao que a vaga pede. Nunca "só lembrando",
   "passando para retomar" nem "retomando meu contato". Sem nada novo, não há cobrança.
-- **Segunda (10 dias):** a que fecha o assunto. Diga que não vai insistir e, se fizer
-  sentido, deixe a porta aberta. Essa mensagem tira a pressão e costuma ter boa resposta.
+- **Segunda (10 dias):** a que fecha o assunto, leve e coloquial, como uma pessoa
+  escreveria no celular. De duas a quatro frases curtas, nesta ordem: um cumprimento
+  informal (com o primeiro nome, se houver); reconhecer que a rotina deve estar corrida
+  com a vaga; oferecer esclarecer alguma dúvida sobre o perfil numa conversa rápida;
+  deixar a porta aberta ("se fizer sentido, é só me chamar"); fechar com boa energia.
+  Sem fato novo, sem número e sem outro assunto: ela não vende, só deixa a porta aberta.
+  Exemplo do tom (não copie palavra por palavra): "Opa, tudo bem, Ana? Imagino que a
+  correria esteja grande com a vaga de Coordenador de NOC. Se ficou alguma dúvida sobre
+  o meu perfil, posso esclarecer numa conversa rápida. Se fizer sentido, é só me chamar.
+  No mais, sigo na torcida!"
+- Na segunda cobrança, nunca: "não vou insistir", "fico à disposição", "desejo
+  sucesso", "agradeço a atenção" nem "confiante no retorno". Soam formais e
+  mecânicos; o app recusa o texto que tiver qualquer uma delas.
 - Depois disso, pare. Uma terceira cobrança não converte e custa a relação.
 
 ### Tom
@@ -101,9 +112,14 @@ Cada texto sai com a contagem de caracteres ao lado.
 1. Cada fato e número está nos fatos confirmados ou nas entradas?
 2. O convite tem até 200 caracteres, com a contagem?
 3. A primeira mensagem tem um pedido só, sem link?
-4. Cada cobrança traz algo novo?
+4. A primeira cobrança traz algo novo? A segunda segue a ordem acima, sem fato novo
+   e sem as frases proibidas?
 5. Algum texto fala da saída do emprego atual, de disponibilidade ou de salário?
 
-Entregue também a lista curta do que a pessoa deve conferir antes de enviar. A
+Esses cinco pontos são para você conferir antes de responder: o resultado deles não
+vai para a lista "conferir". Entregue também a lista curta do que **a pessoa** deve
+conferir por conta própria antes de enviar (por exemplo, o nome e o cargo de quem
+recebe, se um fato ainda vale, se o gancho é real). Nunca coloque nessa lista o
+resultado da sua própria checagem, como "nenhum texto fala de salário". A
 pessoa envia cada mensagem **à mão**: o app não envia nada e não agenda envios.
 Mais de 20 convites por dia fazem o LinkedIn limitar a conta.

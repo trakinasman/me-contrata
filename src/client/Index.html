@@ -553,13 +553,21 @@
         var itens = valor.split(/\r?\n/).map(function (x) { return x.replace(/\s+/g, " ").trim(); }).filter(function (x) { return x; });
         var tamanhos = itens.map(function (x) { return x.length; });
         var passou = tamanhos.some(function (n) { return n > t.limite; });
+        var longo = tamanhos.findIndex(function (n) { return n > t.limite; });
+        var motivoLista = !itens.length ? "Escreva pelo menos um item para salvar."
+          : itens.length > MAX_ITENS_LISTA ? "Tire " + (itens.length - MAX_ITENS_LISTA) + (itens.length - MAX_ITENS_LISTA === 1 ? " item" : " itens") + " para salvar (até " + MAX_ITENS_LISTA + ")."
+          : passou ? "Reduza " + (tamanhos[longo] - t.limite) + " caracteres no item " + (longo + 1) + " para salvar."
+          : "";
         return {
           ok: itens.length > 0 && itens.length <= MAX_ITENS_LISTA && !passou,
-          texto: itens.length + (itens.length === 1 ? " item" : " itens") + " (até " + MAX_ITENS_LISTA + ") · tamanhos: " + (tamanhos.join(", ") || "-") + " · até " + t.limite + " cada"
+          texto: itens.length + (itens.length === 1 ? " item" : " itens") + " (até " + MAX_ITENS_LISTA + ") · tamanhos: " + (tamanhos.join(", ") || "-") + " · até " + t.limite + " cada",
+          motivo: motivoLista
         };
       }
       var n = valor.trim().length;
-      return { ok: n > 0 && n <= t.limite, texto: n + " / " + t.limite + " caracteres" };
+      // O motivo aparece ao lado do botão: no teste de 16/11, o Salvar desativado não dizia por quê.
+      var motivo = n === 0 ? "Escreva o texto para salvar." : n > t.limite ? "Reduza " + (n - t.limite) + (n - t.limite === 1 ? " caractere" : " caracteres") + " para salvar." : "";
+      return { ok: n > 0 && n <= t.limite, texto: n + " / " + t.limite + " caracteres", motivo: motivo };
     }
 
     function trocarTextoAdaptado(v, novo) {
@@ -581,6 +589,7 @@
       var area = h("textarea", { rows: t.itens ? "6" : "10", maxlength: "4000", "aria-label": "Editar " + t.nome });
       area.value = ed.valor;
       var conta = h("span", { class: "small" });
+      var porque = h("span", { class: "small erro", "aria-live": "polite" });
       var erro = h("p", { class: "erro", role: "alert" }, ed.erro || "");
       var salvar = h("button", { class: "btn mini prim", type: "button" }, ed.salvando ? "Salvando…" : "Salvar versão");
       var cancelar = h("button", { class: "btn mini", type: "button", onclick: function () { delete edicoes[chave]; desenharVagas(); } }, "Cancelar");
@@ -590,6 +599,8 @@
         conta.textContent = m.texto;
         conta.className = "small " + (m.ok ? "muted" : "erro");
         salvar.disabled = !m.ok || !!ed.salvando;
+        salvar.title = m.ok ? "" : m.motivo;
+        porque.textContent = m.ok ? "" : m.motivo;
         cancelar.disabled = !!ed.salvando;
       }
       area.addEventListener("input", atualizar);
@@ -615,7 +626,7 @@
         cabecalhoTexto(t, null),
         t.itens ? h("p", { class: "small muted" }, "Um item por linha.") : null,
         area, h("div", { class: "row entre" }, erro, conta),
-        h("div", { class: "row" }, salvar, cancelar));
+        h("div", { class: "row" }, salvar, cancelar, porque));
     }
 
     function blocoTextoAdaptado(v, t) {
@@ -807,6 +818,27 @@
           aviso));
     }
 
+    // Segunda cobrança: a sugestão fixa do app (sem IA) ao lado da versão da IA; a pessoa escolhe qual copiar.
+    function blocoCobranca2(m, sugestao) {
+      function opcao(titulo, explica, texto, limite, extra) {
+        var aviso = h("span", { class: "small muted" });
+        return h("div", { class: "stack opcao-msg" },
+          h("div", { class: "row entre" }, h("b", {}, titulo), h("span", { class: "small muted" }, texto.length + " / " + limite + " caracteres")),
+          h("p", { class: "small muted" }, explica),
+          h("div", { class: "texto-gerado" }, texto),
+          extra,
+          h("div", { class: "row" },
+            h("button", { class: "btn mini", type: "button", onclick: function () { copiar(texto, aviso); } }, "Copiar"),
+            aviso));
+      }
+      return h("div", { class: "stack reescrita" },
+        h("div", { class: "row entre" }, h("h4", {}, m.nome), h("span", { class: "chip" }, m.quando)),
+        h("p", { class: "small muted" }, "Duas opções: escolha a que soa mais como você e copie só ela."),
+        h("div", { class: "duas-opcoes" },
+          opcao("Sugestão do me-contrata", "Texto pronto, leve e sem fatos novos.", sugestao.conteudo, sugestao.limite, null),
+          opcao("Versão da IA", "Escrita para esta vaga, no seu tom.", m.conteudo, m.limite, desenharNaturalidade(m.avaliacao))));
+    }
+
     function painelRecrutador(v) {
       var e = recrutador[v.vagaId] || novoEstadoRecrutador();
       if (e.estado === "carregando") return h("div", { class: "painel-descricao" }, h("p", { class: "small muted" }, "Carregando…"));
@@ -834,7 +866,9 @@
       if (e.r) {
         var quando = new Date(e.r.mensagens[0].criadoEm);
         blocos.push(h("p", { class: "small muted" }, "Versão de " + (isNaN(quando) ? e.r.mensagens[0].criadoEm : quando.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))));
-        e.r.mensagens.forEach(function (m) { blocos.push(blocoMensagem(m)); });
+        e.r.mensagens.forEach(function (m) {
+          blocos.push(m.tipo === "recrutador_cobranca2" && e.r.sugestaoCobranca2 ? blocoCobranca2(m, e.r.sugestaoCobranca2) : blocoMensagem(m));
+        });
         if (e.r.conferir && e.r.conferir.length) {
           blocos.push(h("div", { class: "aviso" }, h("b", {}, "Confira antes de enviar:"),
             h("ul", {}, e.r.conferir.map(function (c) { return h("li", {}, c); }))));
@@ -959,12 +993,13 @@
       }, function (msg) { el("erro-funil").textContent = msg; });
     }
 
-    function percentual(n, poucos) { return n === null ? "" : n + "%" + (poucos ? " (poucos dados)" : ""); }
+    // "== null" de propósito: o google.script.run entrega o null do servidor como undefined.
+    function percentual(n, poucos) { return n == null ? "" : n + "%" + (poucos ? " (poucos dados)" : ""); }
 
     function painelNumerosFunil(n) {
       if (!n.total) return h("p", { class: "muted small" }, "Ainda não há vagas no funil. Em Vagas, use o botão para mover uma vaga para o funil.");
       var linhasEtapas = n.etapas.filter(function (e) { return e.chegaram > 0; }).map(function (e) {
-        return h("li", {}, h("b", {}, e.nome + ": "), e.chegaram + (e.taxa === null ? "" : " (" + percentual(e.taxa, e.poucosDados) + " da etapa anterior)"));
+        return h("li", {}, h("b", {}, e.nome + ": "), e.chegaram + (e.taxa == null ? "" : " (" + percentual(e.taxa, e.poucosDados) + " da etapa anterior)"));
       });
       var blocos = [
         h("p", {}, h("b", {}, n.ativas + " ativas"), " de " + n.total + " no funil."),
@@ -1005,6 +1040,10 @@
 
     function painelAcoesFunil(c) {
       var etapa = h("select", { "aria-label": "Nova etapa" }, funil.etapas.filter(function (e) { return e.id !== c.status; }).map(function (e) { return h("option", { value: e.id }, e.nome); }));
+      // Já vem com a próxima etapa escolhida (antes vinha a primeira da lista, que podia ser voltar para "Inserida").
+      var ids = funil.etapas.map(function (e) { return e.id; });
+      var proxEtapa = ids[ids.indexOf(c.status) + 1];
+      if (proxEtapa && proxEtapa !== "recusado" && proxEtapa !== "desisti") etapa.value = proxEtapa;
       var data = h("input", { type: "date", max: hojeIso(), value: hojeIso(), "aria-label": "Data do acontecimento" });
       var detalhe = h("input", { type: "text", maxlength: "200", placeholder: "Observação (opcional): motivo da recusa, quem entrevistou…", "aria-label": "Observação" });
       var canal = h("select", { "aria-label": "Canal do envio" }, [h("option", { value: "" }, "Canal (opcional)")].concat(funil.canais.map(function (x) { return h("option", { value: x }, x); })));
@@ -1017,25 +1056,38 @@
       ajustar();
 
       var tipoMsg = h("select", { "aria-label": "Mensagem enviada" }, TIPOS_MENSAGEM_FUNIL.map(function (t) { return h("option", { value: t[0] }, t[1]); }));
+      // Já vem com a mensagem seguinte à última registrada (a ordem da lista é a ordem do contato).
+      var ultimaMsg = -1;
+      c.eventos.forEach(function (e) {
+        TIPOS_MENSAGEM_FUNIL.forEach(function (t, k) { if (e.tipo === "mensagem_" + t[0]) ultimaMsg = Math.max(ultimaMsg, k); });
+      });
+      tipoMsg.value = TIPOS_MENSAGEM_FUNIL[Math.min(ultimaMsg + 1, TIPOS_MENSAGEM_FUNIL.length - 1)][0];
       var dataMsg = h("input", { type: "date", max: hojeIso(), value: hojeIso(), "aria-label": "Data do envio da mensagem" });
       var dataCob = h("input", { type: "date", min: hojeIso(), value: c.proximaCobranca ? c.proximaCobranca.slice(0, 10) : "", "aria-label": "Data da próxima cobrança" });
 
+      // Cada ação num bloco separado, com título e botão de nome próprio (no teste, a etapa foi registrada no bloco da mensagem).
       return h("div", { class: "stack" },
-        h("b", {}, "Mudar de etapa"),
-        h("div", { class: "row" }, etapa, data),
-        extras, detalhe,
-        h("div", { class: "row" }, h("button", { class: "btn mini prim", type: "button", onclick: function () {
-          acaoFunil("mudarEtapa", [c.vagaId, etapa.value, { data: data.value, detalhe: detalhe.value, canal: canal.value, cvUsado: cv.value }]);
-        } }, "Registrar")),
-        h("b", {}, "Mensagem ao recrutador enviada"),
-        h("div", { class: "row" }, tipoMsg, dataMsg,
-          h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("registrarMensagemEnviada", [c.vagaId, tipoMsg.value, dataMsg.value]); } }, "Registrar envio")),
-        h("b", {}, "Próxima cobrança"),
-        h("div", { class: "row" }, dataCob,
-          h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("definirProximaCobranca", [c.vagaId, dataCob.value]); } }, dataCob.value ? "Salvar data" : "Definir data"),
-          h("button", { class: "btn mini", type: "button", onclick: function () { dataCob.value = ""; acaoFunil("definirProximaCobranca", [c.vagaId, ""]); } }, "Limpar")),
-        h("b", {}, "Linha do tempo"),
-        linhaDoTempo(c));
+        h("div", { class: "stack bloco-funil" },
+          h("b", {}, "1. Mudar de etapa"),
+          h("p", { class: "small muted" }, "A vaga avançou (ou foi recusada)? Escolha a etapa e a data em que aconteceu."),
+          h("div", { class: "row" }, etapa, data),
+          extras, detalhe,
+          h("div", { class: "row" }, h("button", { class: "btn mini prim", type: "button", onclick: function () {
+            acaoFunil("mudarEtapa", [c.vagaId, etapa.value, { data: data.value, detalhe: detalhe.value, canal: canal.value, cvUsado: cv.value }]);
+          } }, "Mudar etapa"))),
+        h("div", { class: "stack bloco-funil" },
+          h("b", {}, "2. Mensagem ao recrutador"),
+          h("p", { class: "small muted" }, "Mandou uma mensagem? Registre qual foi e quando: a próxima cobrança é calculada sozinha."),
+          h("div", { class: "row" }, tipoMsg, dataMsg,
+            h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("registrarMensagemEnviada", [c.vagaId, tipoMsg.value, dataMsg.value]); } }, "Registrar mensagem"))),
+        h("div", { class: "stack bloco-funil" },
+          h("b", {}, "3. Próxima cobrança"),
+          h("div", { class: "row" }, dataCob,
+            h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("definirProximaCobranca", [c.vagaId, dataCob.value]); } }, dataCob.value ? "Salvar data" : "Definir data"),
+            h("button", { class: "btn mini", type: "button", onclick: function () { dataCob.value = ""; acaoFunil("definirProximaCobranca", [c.vagaId, ""]); } }, "Limpar"))),
+        h("div", { class: "stack bloco-funil" },
+          h("b", {}, "Linha do tempo"),
+          linhaDoTempo(c)));
     }
 
     function cartaoFunil(c) {

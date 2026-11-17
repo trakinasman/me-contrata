@@ -115,6 +115,22 @@ module.exports = function () {
   r.ok(/Competências<\/h2><p>ITIL, Scrum<\/p>/.test(html2), "competência fora da ficha e repetida saem");
   r.ok(abas.Textos.d.filter((l) => l[1] === "usr-A" && l[3] === "candidatura_curriculo").length === 2 && rr.versao === 2, "segunda geração: versão 2");
 
+  // ---- Correções dos testes no ar (17/11/2026) ----
+  const itensA = ctx.itensFichaCv_("usr-A");
+  const doisCargos = ok();
+  doisCargos.experiencias.splice(1, 0, { empresa: "Quantum13", cargo: "Analista N3", periodo: "desde nov/2025", fonte: ["F6"], topicos: [] });
+  doisCargos.cursos = [topico("Lean Six Sigma Yellow Belt (não é certificação), Estácio (2022 a 2025).", ["F8"])];
+  const v17 = ctx.validarCurriculo_(doisCargos, itensA, "Coordeno operações na Grande Florianópolis e em todo o Brasil.");
+  const q = v17.cv.experiencias.filter((x) => x.empresa === "Quantum13");
+  r.ok(q[0].periodo === "desde mar/2026" && q[1].periodo === "nov/2025 a mar/2026", "dois cargos na mesma empresa: o anterior termina quando o atual começa");
+  r.ok(v17.cv.cursos[0] === "Lean Six Sigma Yellow Belt, Estácio (2022 a 2025)." && !/certifica/i.test(JSON.stringify(v17.cv)), "a ressalva \"(não é certificação)\" sai do texto do currículo");
+  r.ok(v17.conferir.some((c) => /resumo repete a cidade/.test(c)), "resumo que repete a cidade do cabeçalho: aviso no \"Confira\"");
+  r.ok(!ctx.validarCurriculo_(ok(), itensA, "Resumo sem lugar.").conferir.some((c) => /cidade/.test(c)), "resumo sem a cidade: sem aviso");
+  const html17 = ctx.htmlCurriculo_(v17.cv);
+  r.ok(/<div class="bloco"><h2>Competências<\/h2><p>/.test(html17) && /<div class="bloco"><h2>Experiência profissional<\/h2><p class="cargo">/.test(html17), "título de seção preso ao primeiro bloco dela (não fica sozinho no pé da página)");
+  r.ok(/h2\{page-break-after:avoid/.test(html17) && /\.bloco\{page-break-inside:avoid/.test(html17), "CSS de quebra de página: título não se separa do conteúdo");
+  r.ok((html17.match(/<p class="cargo">/g) || []).length === 3 && (html17.match(/<div class="bloco"><p class="cargo">/g) || []).length === 2, "cada experiência depois da primeira é um bloco que não quebra");
+
   // ---- Tópico acima do limite sai inteiro, não cortado no meio ----
   const comLongo = ok();
   comLongo.experiencias[0].topicos.push(topico("Remodelação do datacenter " + "x".repeat(240) + " seguindo EIA/TIA-568-B e NR35.", ["F6"]));
