@@ -1102,9 +1102,142 @@
           h("div", { class: "row" }, dataCob,
             h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("definirProximaCobranca", [c.vagaId, dataCob.value]); } }, dataCob.value ? "Salvar data" : "Definir data"),
             h("button", { class: "btn mini", type: "button", onclick: function () { dataCob.value = ""; acaoFunil("definirProximaCobranca", [c.vagaId, ""]); } }, "Limpar"))),
+        painelWhatsApp(c),
         h("div", { class: "stack bloco-funil" },
           h("b", {}, "Linha do tempo"),
           linhaDoTempo(c)));
+    }
+
+    // ---------- Modo WhatsApp (PR B): mensagens curtas, com dois caminhos ----------
+    var OBJETIVOS_WPP = [
+      ["andamento", "Saber o andamento do processo"],
+      ["responder_retorno", "Responder a um retorno do recrutador"],
+      ["agradecer_entrevista", "Agradecer a entrevista e perguntar os próximos passos"],
+      ["confirmar_horario", "Confirmar data e horário de uma entrevista"],
+      ["duvida", "Tirar uma dúvida sobre a vaga ou o processo"],
+      ["algo_novo", "Contar uma novidade (certificação, portfólio...)"],
+    ];
+    // O painel de cada vaga é guardado: as outras ações do funil redesenham o card e não podem apagar o que foi escrito.
+    var paineisWpp = {};
+
+    function painelWhatsApp(c) {
+      if (paineisWpp[c.vagaId]) return paineisWpp[c.vagaId];
+      var modo1 = modoMelhorarWpp(c);
+      var modo2 = modoEscreverWpp(c);
+      modo2.hidden = true;
+      var b1 = h("button", { class: "btn mini prim", type: "button", "aria-pressed": "true" }, "Melhorar o meu texto");
+      var b2 = h("button", { class: "btn mini", type: "button", "aria-pressed": "false" }, "Me ajude a escrever");
+      function escolher(primeiro) {
+        modo1.hidden = !primeiro; modo2.hidden = primeiro;
+        b1.className = "btn mini" + (primeiro ? " prim" : ""); b2.className = "btn mini" + (primeiro ? "" : " prim");
+        b1.setAttribute("aria-pressed", primeiro ? "true" : "false"); b2.setAttribute("aria-pressed", primeiro ? "false" : "true");
+      }
+      b1.addEventListener("click", function () { escolher(true); });
+      b2.addEventListener("click", function () { escolher(false); });
+      var painel = h("div", { class: "stack bloco-funil" },
+        h("b", {}, "5. Mensagem pelo WhatsApp"),
+        h("p", { class: "small muted" }, "Para quando a conversa já está no WhatsApp: mensagens curtas, uma ideia por vez. O app não envia nada: você copia e envia."),
+        h("div", { class: "row" }, b1, b2),
+        modo1, modo2);
+      paineisWpp[c.vagaId] = painel;
+      return painel;
+    }
+
+    // Lista das mensagens prontas, cada uma com o seu Copiar (no WhatsApp elas vão separadas, nesta ordem).
+    function mensagensWpp(titulo, msgs, avaliacao) {
+      var aviso = h("span", { class: "small muted", role: "status" });
+      return h("div", { class: "stack" },
+        h("b", { class: "small" }, titulo),
+        h("p", { class: "small muted" }, "Envie uma por vez, nesta ordem. Revise antes: o nome e qualquer data ou horário."),
+        h("ol", { class: "stack" }, msgs.map(function (m) {
+          return h("li", {}, h("div", { class: "row entre" }, h("span", {}, m),
+            h("button", { class: "btn mini", type: "button", onclick: function () { copiar(m, aviso); } }, "Copiar")));
+        })),
+        aviso,
+        desenharNaturalidade(avaliacao));
+    }
+
+    function modoMelhorarWpp(c) {
+      var rascunho = h("textarea", { rows: "4", maxlength: "1000", placeholder: "Ex.: Bom dia, tudo bem? Gostaria de saber se houve alguma atualização sobre o processo...", "aria-label": "Sua ideia de mensagem" });
+      var status = h("p", { class: "small muted", role: "status" });
+      var resultado = h("div", { class: "stack" });
+      var botao = h("button", { class: "btn mini prim", type: "button" }, "Analisar meu texto");
+      botao.addEventListener("click", function () {
+        if (rascunho.value.trim().length < 10) { status.textContent = "Escreva a sua ideia de mensagem (pelo menos uma frase)."; return; }
+        botao.disabled = true; status.textContent = "Lendo o seu texto..."; resultado.replaceChildren();
+        chamar("analisarRascunhoWhatsApp", [tokenAtual, c.vagaId, rascunho.value], function (r) {
+          botao.disabled = false; status.textContent = "";
+          resultado.replaceChildren(diagnosticoWpp(c, rascunho.value, r));
+        }, function (msg) { botao.disabled = false; status.textContent = msg; });
+      });
+      return h("div", { class: "stack" },
+        h("label", { class: "small" }, "Cole aqui a sua ideia de mensagem para o recrutador, do jeito que você escreveria."),
+        rascunho,
+        h("div", { class: "row" }, botao), status, resultado);
+    }
+
+    function diagnosticoWpp(c, rascunho, r) {
+      var respostas = r.perguntas.map(function (p) {
+        return h("input", { type: "text", maxlength: "300", placeholder: "Sua resposta (opcional)", "aria-label": p });
+      });
+      var status = h("p", { class: "small muted", role: "status" });
+      var final = h("div", { class: "stack" });
+      var botao = h("button", { class: "btn mini prim", type: "button" }, "Gerar versão final");
+      botao.addEventListener("click", function () {
+        var rs = respostas.map(function (i) { return i.value; });
+        if (!rs.some(function (x) { return x.trim(); })) { status.textContent = "Responda pelo menos uma das perguntas."; return; }
+        botao.disabled = true; status.textContent = "Escrevendo a versão final..."; final.replaceChildren();
+        chamar("finalizarRascunhoWhatsApp", [tokenAtual, c.vagaId, rascunho, r.perguntas, rs], function (f) {
+          status.textContent = "";
+          final.replaceChildren(mensagensWpp("Versão final", f.mensagens, f.avaliacao));
+        }, function (msg) { botao.disabled = false; status.textContent = msg; });
+      });
+      return h("div", { class: "stack" },
+        h("div", { class: "row" }, h("span", { class: "chip " + (r.mecanico ? "warn" : "ok") }, r.mecanico ? "Seu texto soa mecânico" : "Seu texto está bom")),
+        h("p", {}, r.diagnostico),
+        r.trechos.length ? h("div", { class: "small" }, h("b", {}, "Trechos que pesam: "),
+          h("ul", {}, r.trechos.map(function (t) { return h("li", {}, t); }))) : null,
+        h("details", { class: "small" }, h("summary", {}, "Naturalidade do seu texto"), desenharNaturalidade(r.avaliacaoRascunho)),
+        mensagensWpp("Versão sugerida", r.mensagens, r.avaliacao),
+        h("div", { class: "stack bloco-funil" },
+          h("b", { class: "small" }, "Quer deixar mais com a sua cara? Conte um pouco mais da sua ideia (pode responder só uma):"),
+          r.perguntas.map(function (p, i) { return h("label", { class: "stack small" }, p, respostas[i]); }),
+          h("div", { class: "row" }, botao), status, final));
+    }
+
+    function modoEscreverWpp(c) {
+      var etapa = h("select", { "aria-label": "Etapa do processo" }, funil.etapas.filter(function (e) { return e.id !== "recusado" && e.id !== "desisti"; })
+        .map(function (e) { return h("option", { value: e.id }, e.nome); }));
+      etapa.value = c.status;
+      var retornos = c.eventos.filter(function (e) { return e.tipo === "retorno_recrutador"; });
+      var houveRetorno = h("select", { "aria-label": "O recrutador já deu retorno?" }, h("option", { value: "nao" }, "Não"), h("option", { value: "sim" }, "Sim"));
+      houveRetorno.value = retornos.length ? "sim" : "nao";
+      var contatos = c.eventos.filter(function (e) { return e.tipo.indexOf("mensagem_") === 0 || e.tipo === "retorno_recrutador"; });
+      var ultimo = h("input", { type: "date", max: hojeIso(), value: contatos.length ? contatos[contatos.length - 1].em.slice(0, 10) : "", "aria-label": "Data do último contato" });
+      var objetivo = h("select", { "aria-label": "O que você quer agora" }, [h("option", { value: "" }, "Escolha o que você quer agora")]
+        .concat(OBJETIVOS_WPP.map(function (o) { return h("option", { value: o[0] }, o[1]); })));
+      var nome = h("input", { type: "text", maxlength: "80", placeholder: "Nome de quem recebe (opcional)", "aria-label": "Nome de quem recebe" });
+      var obs = h("textarea", { rows: "2", maxlength: "300", placeholder: "Observação (opcional): a dúvida, a novidade, o horário combinado...", "aria-label": "Observação" });
+      var status = h("p", { class: "small muted", role: "status" });
+      var resultado = h("div", { class: "stack" });
+      var botao = h("button", { class: "btn mini prim", type: "button", disabled: "disabled", title: "Escolha antes o que você quer agora" }, "Escrever mensagens");
+      objetivo.addEventListener("change", function () { botao.disabled = !objetivo.value; botao.title = objetivo.value ? "" : "Escolha antes o que você quer agora"; });
+      botao.addEventListener("click", function () {
+        if (!objetivo.value) return;
+        botao.disabled = true; status.textContent = "Escrevendo..."; resultado.replaceChildren();
+        chamar("escreverWhatsApp", [tokenAtual, c.vagaId, { etapa: etapa.value, houveRetorno: houveRetorno.value, ultimoContato: ultimo.value, objetivo: objetivo.value, nome: nome.value, observacao: obs.value }], function (r) {
+          botao.disabled = false; status.textContent = "";
+          resultado.replaceChildren(mensagensWpp("Mensagens sugeridas", r.mensagens, r.avaliacao));
+        }, function (msg) { botao.disabled = false; status.textContent = msg; });
+      });
+      return h("div", { class: "stack" },
+        h("p", { class: "small muted" }, "Já preenchemos com o que está no funil. Corrija se algo mudou."),
+        h("label", { class: "stack small" }, "Em que etapa está o processo?", etapa),
+        h("label", { class: "stack small" }, "O recrutador já deu algum retorno?", houveRetorno),
+        h("label", { class: "stack small" }, "Quando foi o último contato?", ultimo),
+        h("label", { class: "stack small" }, "O que você quer agora?", objetivo),
+        nome, obs,
+        h("div", { class: "row" }, botao), status, resultado);
     }
 
     function cartaoFunil(c) {

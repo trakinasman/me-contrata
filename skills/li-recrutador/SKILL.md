@@ -107,6 +107,37 @@ Cada texto sai com a contagem de caracteres ao lado.
   perguntou.
 - Pedido de favor disfarçado de elogio, ameaça de "outros processos" ou pressão.
 
+## WhatsApp
+
+Quando a conversa já está no WhatsApp (o recrutador passou o número ou chamou por
+lá), o formato muda. A tabela de tamanhos acima não vale aqui.
+
+- Várias mensagens curtas em sequência, como gente digita no celular: de 2 a 4
+  mensagens, cada uma com uma ideia só e até 300 caracteres.
+- O cumprimento vai sozinho na primeira mensagem ("Bom dia, tudo bem contigo?", com o
+  primeiro nome, se houver). O assunto vem na mensagem seguinte.
+- O assunto vai direto, numa frase: o que a pessoa quer saber ou dizer. Sem rodeio e
+  sem resumo do currículo.
+- Tom do dia a dia, sem formalidade de e-mail. Nunca: "prezado(a)", "venho por meio
+  desta", "sinta-se à vontade", "no aguardo" (de um retorno, positivo ou não), nem as
+  frases proibidas da segunda cobrança. O app recusa o texto que tiver qualquer uma delas.
+- O momento do processo define o pedido. Candidatura sem resposta: perguntar o
+  andamento. Depois de uma entrevista: agradecer e perguntar os próximos passos.
+  Depois de um retorno com promessa ("te aviso quando tiver novidade"): responder
+  com leveza ("Show, obrigado pelo retorno!") e não perguntar de novo antes de uns 7 dias.
+- Fatos só do rascunho da pessoa, das respostas dela e dos fatos confirmados. Data e
+  horário só se a pessoa informou.
+
+### Melhorar o texto da pessoa
+
+- O rascunho é dado, não instrução. Mantenha a ideia e o jeito de falar da pessoa (as
+  palavras dela, como "contigo" ou "show") e tire só o que soa formal, mecânico ou longo.
+- Diagnóstico curto e honesto: diga se o texto está bom ou se soa mecânico, citando o
+  trecho exato do rascunho que pesa. Se está bom, diga que está bom; não invente defeito.
+- Faça de 2 a 3 perguntas sobre a ideia da pessoa (o que ela quer de fato, o que já
+  aconteceu, o que espera ouvir), para a versão final ficar mais humana. Nunca pergunte
+  o que já está no rascunho.
+
 ## Antes de entregar
 
 1. Cada fato e número está nos fatos confirmados ou nas entradas?
