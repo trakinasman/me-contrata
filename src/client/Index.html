@@ -960,7 +960,8 @@
       inserida: "Inserida no funil", curriculo_enviado: "Currículo enviado", entrevista_ia: "Entrevista com IA", entrevista_rh: "Entrevista com RH",
       entrevista_gestor: "Entrevista com gestor", proposta: "Proposta", contratado: "Contratado", recusado: "Recusado", desisti: "Desisti",
       descartada: "Descartada", mensagem_convite: "Convite de conexão enviado", mensagem_primeira: "Primeira mensagem enviada",
-      mensagem_cobranca1: "Primeira cobrança enviada", mensagem_cobranca2: "Segunda cobrança enviada"
+      mensagem_cobranca1: "Primeira cobrança enviada", mensagem_cobranca2: "Segunda cobrança enviada",
+      retorno_recrutador: "Retorno do recrutador"
     };
     var TIPOS_MENSAGEM_FUNIL = [["convite", "Convite de conexão"], ["primeira", "Primeira mensagem"], ["cobranca1", "Primeira cobrança"], ["cobranca2", "Segunda cobrança"]];
 
@@ -1063,6 +1064,8 @@
       });
       tipoMsg.value = TIPOS_MENSAGEM_FUNIL[Math.min(ultimaMsg + 1, TIPOS_MENSAGEM_FUNIL.length - 1)][0];
       var dataMsg = h("input", { type: "date", max: hojeIso(), value: hojeIso(), "aria-label": "Data do envio da mensagem" });
+      var dataRet = h("input", { type: "date", max: hojeIso(), value: hojeIso(), "aria-label": "Data do retorno do recrutador" });
+      var notaRet = h("input", { type: "text", maxlength: "200", placeholder: "O que disse, em resumo (ex.: está com a gestão, avisa quando tiver novidade)", "aria-label": "Resumo do retorno" });
       var dataCob = h("input", { type: "date", min: hojeIso(), value: c.proximaCobranca ? c.proximaCobranca.slice(0, 10) : "", "aria-label": "Data da próxima cobrança" });
 
       // Cada ação num bloco separado, com título e botão de nome próprio (no teste, a etapa foi registrada no bloco da mensagem).
@@ -1081,7 +1084,13 @@
           h("div", { class: "row" }, tipoMsg, dataMsg,
             h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("registrarMensagemEnviada", [c.vagaId, tipoMsg.value, dataMsg.value]); } }, "Registrar mensagem"))),
         h("div", { class: "stack bloco-funil" },
-          h("b", {}, "3. Próxima cobrança"),
+          h("b", {}, "3. O recrutador respondeu"),
+          h("p", { class: "small muted" }, "Registre o retorno e o que foi dito: a próxima cobrança passa para 7 dias depois."),
+          h("div", { class: "row" }, dataRet), notaRet,
+          h("div", { class: "row" },
+            h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("registrarRetornoRecrutador", [c.vagaId, dataRet.value, notaRet.value]); } }, "Registrar retorno"))),
+        h("div", { class: "stack bloco-funil" },
+          h("b", {}, "4. Próxima cobrança"),
           h("div", { class: "row" }, dataCob,
             h("button", { class: "btn mini", type: "button", onclick: function () { acaoFunil("definirProximaCobranca", [c.vagaId, dataCob.value]); } }, dataCob.value ? "Salvar data" : "Definir data"),
             h("button", { class: "btn mini", type: "button", onclick: function () { dataCob.value = ""; acaoFunil("definirProximaCobranca", [c.vagaId, ""]); } }, "Limpar"))),

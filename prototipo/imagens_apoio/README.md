@@ -28,6 +28,16 @@ Uma linha por imagem, logo que ela entrar na pasta. Nome do arquivo no padrão `
 | jobstep_3.pdf | 16/11/2026 | Reclame Aqui, empresa JobSteps.io (impressão da página, sem texto selecionável) | Reclamação de 11/11/2026 (não respondida): reembolso dentro de 7 dias do plano Premium negado por ter baixado um currículo | Queixas do JobStep |
 | jobstep_4.pdf | 16/11/2026 | Reclame Aqui, empresa JobSteps.io (impressão da página, sem texto selecionável) | Reclamação de 11/11/2026 (não respondida): preço diferente por forma de pagamento, função principal limitada (links do LinkedIn), condição de reembolso questionada, pedido de exclusão de dados | Queixas do JobStep |
 | jobstep_5.pdf | 16/11/2026 | Reclame Aqui, empresa JobSteps.io (impressão da página, sem texto selecionável) | Reclamação de 09/11/2026 (não respondida): comprou e não conseguiu cancelar | Queixas do JobStep |
+| WhatsApp Image 2026-11-17 at 10.07.18.jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Vagas: dois cartões (nota por regras, selo IA, botões) | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.18 (1).jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Funil: painel de números (ainda com "undefined%" e "0,5 dias", antes da @41) | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.18 (2).jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Funil: grupos Currículo enviado e Recusado; "Abrir anúncio" azul-escuro quase invisível | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.19.jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Funil: card aberto; campos de data brancos com texto quase invisível no modo escuro | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.19 (1).jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Funil: card aberto, linha do tempo | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.19 (2).jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Perfil/Ficha: seção Quem sou (tem dado pessoal do candidato) | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.19 (3).jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Análise do perfil: nota e notas por bloco | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.19 (4).jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Ficha: seção Fora dos limites | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.19 (5).jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Adaptação: texto "O que espera da empresa" com naturalidade | E4-03 (celular); achados no PR do modo escuro |
+| WhatsApp Image 2026-11-17 at 10.07.20.jpeg | 17/11/2026 | Celular Android, Chrome, modo escuro (teste E4-03, versão @40) | Adaptação: "Pontos a desenvolver" com [CONFIRMAR] destacado | E4-03 (celular); achados no PR do modo escuro |
 
 ## Regras
 

@@ -28,6 +28,8 @@ const FUNIL = {
   CANAIS: ["Site da empresa", "E-mail", "LinkedIn", "Gupy", "Catho", "InfoJobs", "Indeed", "Sólides", "InHire", "Outro"],
   /** Dias até a próxima cobrança depois de cada mensagem enviada (null = sem cobrança depois). */
   PROXIMA_COBRANCA: { convite: null, primeira: 4, cobranca1: 6, cobranca2: null } as Record<string, number | null>,
+  /** Depois de um retorno do recrutador (ex.: "está com a gestão, te aviso"), a próxima cobrança vem 7 dias depois. */
+  DIAS_APOS_RETORNO: 7,
 };
 const TERMINAIS = ["contratado", "recusado", "desisti"];
 
@@ -155,6 +157,34 @@ function registrarMensagemEnviada(token: string, vagaId: unknown, tipo: unknown,
     }
     cand.aba.getRange(i + 2, cc("atualizado_em") + 1).setValue(new Date());
     registrarLog_(s.usuario_id, "funil_mensagem", `${id}: ${t}`);
+  } finally {
+    lock.releaseLock();
+  }
+  return funilDe_(s.usuario_id);
+}
+
+/**
+ * Registra que o recrutador respondeu (data real e o que disse, em resumo). É novidade: zera o tempo parado. A próxima
+ * cobrança passa para 7 dias depois do retorno (a regra de 4 e 10 dias é para quem não respondeu). Caso real: 17/11/2026.
+ */
+function registrarRetornoRecrutador(token: string, vagaId: unknown, data: unknown, detalhe: unknown): FunilTela {
+  const s = exigirAceite_(token);
+  const em = dataDoEvento_(data);
+  const nota = String(detalhe ?? "").replace(/\s+/g, " ").trim().slice(0, FUNIL.MAX_DETALHE);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const cand = lerAba_("Candidaturas");
+    const cc = (n: string) => coluna_(cand.cab, n);
+    const i = linhaDaCandidatura_(cand.linhas, cc, s.usuario_id, vagaId);
+    const id = String(cand.linhas[i][cc("vaga_id")]).trim();
+    const status = String(cand.linhas[i][cc("status")]).trim();
+    if (TERMINAIS.includes(status)) throw new Error("Esta vaga já foi encerrada no funil.");
+    registrarEvento_(s.usuario_id, id, "retorno_recrutador", String(celulaTexto_(nota)), em);
+    const proxima = new Date(em.getFullYear(), em.getMonth(), em.getDate() + FUNIL.DIAS_APOS_RETORNO, 12, 0, 0);
+    cand.aba.getRange(i + 2, cc("proxima_cobranca") + 1).setValue(proxima);
+    cand.aba.getRange(i + 2, cc("atualizado_em") + 1).setValue(new Date());
+    registrarLog_(s.usuario_id, "funil_retorno", id);
   } finally {
     lock.releaseLock();
   }

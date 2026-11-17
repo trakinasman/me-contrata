@@ -5,7 +5,7 @@ const { criarAmbiente, novoRelatorio, ehData } = require("./simulador");
 
 module.exports = function () {
   const r = novoRelatorio("Funil (Etapa 6)");
-  const { ctx, abas, usuario } = criarAmbiente();
+  const { ctx, g, abas, usuario } = criarAmbiente();
   const A = usuario("usr-A");
   const B = usuario("usr-B");
   const dia = 24 * 3600e3;
@@ -157,6 +157,23 @@ module.exports = function () {
   const nCal = ctx.numerosFunil_([{ vagaId: "x", fonte: "Gupy", status: "curriculo_enviado", eventos: [
     { tipo: "inserida", detalhe: "", em: madrugada }, { tipo: "curriculo_enviado", detalhe: "", em: meioDia }] }]);
   r.ok(nCal.tempos[0].dias === 0, "inserida 00:43 e envio 12:00 do mesmo dia: 0 dia, não 0,5");
+
+  // Retorno do recrutador (caso real de 17/11/2026: "está com a gestão, te aviso").
+  anuncio("v9", "Retorno"); estado("usr-A", "v9"); noFunil("usr-A", "v9");
+  ctx.mudarEtapa(A, "v9", "entrevista_gestor", { data: iso(10) });
+  r.ok(ctx.funilDoCandidato(A).candidaturas.find((c) => c.vagaId === "v9").alerta, "entrevista há 10 dias sem novidade: alerta");
+  r.erro(() => ctx.registrarRetornoRecrutador(A, "v9", amanha, ""), /no futuro/, "retorno com data no futuro: recusa");
+  r.erro(() => ctx.registrarRetornoRecrutador(B, "v9", iso(0), ""), /não está no seu funil/, "B não registra retorno na vaga de A");
+  f = ctx.registrarRetornoRecrutador(A, "v9", iso(0), "  está com a   gestão, avisa quando tiver novidade ");
+  const ev9 = eventos("usr-A", "v9").at(-1);
+  r.ok(ev9[3] === "retorno_recrutador" && ev9[4] === "está com a gestão, avisa quando tiver novidade", "retorno vira evento, com o resumo limpo");
+  const c9 = f.candidaturas.find((c) => c.vagaId === "v9");
+  r.ok(c9.diasParado === 0 && !c9.alerta && c9.status === "entrevista_gestor", "retorno zera o tempo parado, tira o alerta e não muda a etapa");
+  const p9 = cand("usr-A", "v9")[6];
+  r.ok(ehData(p9) && Math.round((p9.getTime() - Date.now()) / dia) === 7, "próxima cobrança 7 dias depois do retorno");
+  ctx.mudarEtapa(A, "v9", "recusado", {});
+  r.erro(() => ctx.registrarRetornoRecrutador(A, "v9", iso(0), ""), /encerrada/, "vaga encerrada não recebe retorno");
+  r.ok(g("LISTAS").tipo_evento.includes("retorno_recrutador"), "tipo de evento novo na lista (validação da planilha via setupAmbiente)");
 
   // Isolamento nas ações.
   r.erro(() => ctx.registrarMensagemEnviada(B, "v1", "primeira", ""), /não está no seu funil/, "B não registra mensagem na vaga de A");
