@@ -42,7 +42,9 @@ const OBJETIVOS_WHATSAPP: Record<string, string> = {
 };
 
 /** Formalidade que soa mecânica no WhatsApp (caso real de 17/11), além das proibidas da segunda cobrança. Sem \b (ver rePT_). */
-const FRASES_PROIBIDAS_WHATSAPP = /prezad[oa]|venho\s+por\s+meio|sinta-se\s+[aà]\s+vontade|no\s+aguardo/i;
+// "(continuo|fico|sigo) aguardando": a versão final de 18/11 fechou com "Continuo aguardando a próxima etapa", o mesmo peso do
+// "continuo no aguardo positivo" da conversa real.
+const FRASES_PROIBIDAS_WHATSAPP = /prezad[oa]|venho\s+por\s+meio|sinta-se\s+[aà]\s+vontade|no\s+aguardo|(continuo|fico|sigo|estou)\s+aguardando/i;
 
 interface DiagnosticoWhatsApp {
   vagaId: string;
@@ -90,12 +92,13 @@ function analisarRascunhoWhatsApp(token: string, vagaId: unknown, rascunho: unkn
   const permitido = [ficha.fatos.join(" "), vaga.titulo, vaga.empresa, texto, momento].join(" ");
 
   let r: { mensagens: string[]; mecanico: boolean; diagnostico: string; trechos: string[]; perguntas: string[]; avisoMomento: string } | null = null;
+  let motivo = "";
   for (let t = 1; t <= WHATSAPP.TENTATIVAS && !r; t++) {
-    const resp = chamarIAJson_(s.usuario_id, "whatsapp_diagnostico", systemWhatsApp_(), conteudo, schemaDiagnosticoWhatsApp_(), "medium");
+    const resp = chamarIAJson_(s.usuario_id, "whatsapp_diagnostico", systemWhatsApp_(), conteudo + correcaoWhatsApp_(motivo), schemaDiagnosticoWhatsApp_(), "medium");
     const v = validarDiagnosticoWhatsApp_(resp, permitido, texto);
-    if (v.ok) r = v.resultado; else registrarLog_(s.usuario_id, "whatsapp_invalido", `${id}: diagnóstico, tentativa ${t}, ${v.motivo}`);
+    if (v.ok) r = v.resultado; else { motivo = v.motivo; registrarLog_(s.usuario_id, "whatsapp_invalido", `${id}: diagnóstico, tentativa ${t}, ${v.motivo}`); }
   }
-  if (!r) throw new Error("A resposta não veio no formato esperado. Tente de novo em alguns minutos.");
+  if (!r) throw new Error(erroWhatsApp_(motivo));
 
   const evitar = termosEvitar_(ficha.evitar);
   registrarLog_(s.usuario_id, "whatsapp_diagnostico", `${id}: ${r.mensagens.length} mensagens, mecanico=${r.mecanico}`);
@@ -270,6 +273,8 @@ function systemWhatsApp_(): string {
     "andamento não vira agradecer). Se o <momento> mostrar que esse pedido já foi respondido ou ficou para trás (ex.: retorno do",
     "recrutador hoje), explique isso em aviso_momento, numa frase, e sugira o que faria mais sentido agora; a versão continua com",
     "o assunto do rascunho. Sem conflito, aviso_momento vem vazio.",
+    "Manter o jeito de falar da pessoa não inclui as frases proibidas da skill: elas não entram nem se estiverem no rascunho ou",
+    "nas respostas (\"sinta-se à vontade\", \"no aguardo\", \"fico à disposição\"...). Troque por algo do dia a dia.",
   ].join("\n");
 }
 
@@ -307,7 +312,8 @@ function validarMensagensWhatsApp_(v: unknown, permitido: string): { ok: true; m
   for (const m of msgs) {
     if (m.length > WHATSAPP.MAX_MENSAGEM) return { ok: false, motivo: `mensagem com ${m.length} caracteres` };
     if (/https?:\/\/|www\./i.test(m)) return { ok: false, motivo: "mensagem com link" };
-    if (FRASES_PROIBIDAS_WHATSAPP.test(m) || FRASES_PROIBIDAS_COBRANCA2.test(m)) return { ok: false, motivo: "frase formal proibida" };
+    const proibida = m.match(FRASES_PROIBIDAS_WHATSAPP) || m.match(FRASES_PROIBIDAS_COBRANCA2);
+    if (proibida) return { ok: false, motivo: `frase formal proibida: "${proibida[0]}"` };
     if (/espero que (esta|essa) mensagem/i.test(m)) return { ok: false, motivo: "abertura de modelo" };
     if (!numerosConferem_(m, permitido)) return { ok: false, motivo: "número que não está nas entradas" };
   }
@@ -332,14 +338,31 @@ function validarDiagnosticoWhatsApp_(r: unknown, permitido: string, rascunho: st
   return { ok: true, resultado: { mensagens: m.mensagens, mecanico: o.mecanico === true, diagnostico, trechos, perguntas, avisoMomento } };
 }
 
+/**
+ * Caso de 18/11: a versão final usou "sinta-se à vontade" (do próprio rascunho) duas vezes, porque a 2ª tentativa repetia o
+ * mesmo pedido. Agora a nova tentativa diz à IA o que foi recusado.
+ */
+function correcaoWhatsApp_(motivo: string): string {
+  if (!motivo) return "";
+  return `\n\nA tentativa anterior foi recusada pelo app (${motivo}). Escreva de novo sem esse problema; se a frase veio do rascunho ou das respostas, troque por algo do dia a dia.`;
+}
+
+/** Erro claro para a pessoa: com frase proibida, diz qual e o que fazer; nos outros casos, tentar de novo. */
+function erroWhatsApp_(motivo: string): string {
+  const frase = /frase formal proibida: "([^"]+)"/.exec(motivo);
+  if (frase) return `A IA insistiu numa frase formal que o app não aceita ("${frase[1]}"). Se ela está no seu texto ou nas suas respostas, troque por algo mais leve e gere de novo.`;
+  return "As mensagens não vieram no formato esperado. Tente de novo em alguns minutos.";
+}
+
 function gerarEGravarWhatsApp_(usuarioId: string, vagaId: string, conteudo: string, permitido: string, ficha: FichaReescrita, funcao: string): MensagensWhatsApp {
   let msgs: string[] | null = null;
+  let motivo = "";
   for (let t = 1; t <= WHATSAPP.TENTATIVAS && !msgs; t++) {
-    const resp = chamarIAJson_(usuarioId, funcao, systemWhatsApp_(), conteudo, schemaMensagensWhatsApp_(), "medium");
+    const resp = chamarIAJson_(usuarioId, funcao, systemWhatsApp_(), conteudo + correcaoWhatsApp_(motivo), schemaMensagensWhatsApp_(), "medium");
     const v = validarMensagensWhatsApp_(((resp ?? {}) as Record<string, unknown>).mensagens, permitido);
-    if (v.ok) msgs = v.mensagens; else registrarLog_(usuarioId, "whatsapp_invalido", `${vagaId}: ${funcao}, tentativa ${t}, ${v.motivo}`);
+    if (v.ok) msgs = v.mensagens; else { motivo = v.motivo; registrarLog_(usuarioId, "whatsapp_invalido", `${vagaId}: ${funcao}, tentativa ${t}, ${v.motivo}`); }
   }
-  if (!msgs) throw new Error("As mensagens não vieram no formato esperado. Tente de novo em alguns minutos.");
+  if (!msgs) throw new Error(erroWhatsApp_(motivo));
   const versao = (versoesDaVaga_(usuarioId, vagaId)[TIPO_TEXTO_WHATSAPP] ?? 0) + 1;
   anexarLinhas_("Textos", [{
     texto_id: Utilities.getUuid(), usuario_id: usuarioId, vaga_id: vagaId, tipo: TIPO_TEXTO_WHATSAPP, conteudo: msgs.join("\n\n"),

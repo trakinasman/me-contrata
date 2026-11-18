@@ -74,6 +74,8 @@ module.exports = function () {
   r.ok(!valida(["a", "b", "c", "d", "e"]).ok, "5 mensagens: recusa (máximo 4)");
   r.ok(!valida(["Bom dia, tudo bem contigo? Queria muito saber como está o processo da vaga, se já tem novidade", "Obrigado!"]).ok, "cumprimento longo na primeira: recusa");
   r.ok(!valida(["Oi!", "Fico no aguardo de um retorno."]).ok && !valida(["Oi!", "Sinta-se à vontade para me chamar."]).ok && !valida(["Prezada, bom dia", "Tudo certo?"]).ok, "frases formais proibidas: recusa");
+  r.ok(!valida(["Oi!", "Continuo aguardando a próxima etapa e obrigado pelo retorno."]).ok && !valida(["Oi!", "Fico aguardando, viu?"]).ok && valida(["Oi!", "Ela está aguardando a gestora."]).ok, "\"continuo/fico aguardando\" recusado (caso de 18/11); \"está aguardando\" passa");
+  r.ok(/Não feche com "aguardando"/.test(ctx.systemWhatsApp_()), "skill: a última mensagem é a porta aberta, não uma espera");
   r.ok(!valida(["Oi!", "Fico à disposição."]).ok, "frase proibida da segunda cobrança também vale");
   r.ok(!valida(["Oi!", "Veja www.exemplo.com"]).ok, "link: recusa");
   r.ok(!valida(["Oi!", "Coordenei 40 pessoas."]).ok && valida(["Oi!", "Coordeno 15 pessoas."]).ok, "número fora das entradas: recusa; número das entradas passa");
@@ -106,6 +108,19 @@ module.exports = function () {
   r.ok(/responder a um retorno/.test(c3) && /Nome: Ana/.test(c3) && !/<x>/.test(c3), "questionário: objetivo e nome, sem tag injetada");
   r.ok(q.versao === 2 && q.mensagens[0] === "Oi Ana, tudo bem?", "questionário: mensagens e versão 2");
   r.erro(() => ctx.escreverWhatsApp(A, "v:1", { etapa: "entrevista_rh", objetivo: "andamento", ultimoContato: fmt(new Date(Date.now() + 2 * dia)) }), /futuro/, "último contato no futuro: recusa");
+
+  // Caso de 18/11: a versão final repetiu "sinta-se à vontade" do rascunho nas duas tentativas.
+  r.ok(/Manter o jeito de falar da pessoa não inclui as frases proibidas/.test(chamadasIA.at(-1).system), "system: frase proibida do rascunho não entra na versão");
+  const n0 = chamadasIA.length;
+  respostasIA.push({ mensagens: ["Bom dia, tudo bem contigo?", "Sinta-se à vontade para me perguntar."] });
+  respostasIA.push({ mensagens: ["Bom dia, tudo bem contigo?", "Se ficou alguma dúvida, me chama."] });
+  const fx = ctx.finalizarRascunhoWhatsApp(A, "v:1", rascunho, ["P?"], ["quero saber do processo"], "agora");
+  const c2a = chamadasIA[n0].messages[0].content, c2b = chamadasIA[n0 + 1].messages[0].content;
+  r.ok(!/tentativa anterior foi recusada/.test(c2a) && /tentativa anterior foi recusada pelo app \(frase formal proibida: "Sinta-se à vontade"\)/.test(c2b), "2ª tentativa diz à IA qual frase foi recusada");
+  r.ok(fx.mensagens[1] === "Se ficou alguma dúvida, me chama.", "com a correção, a 2ª tentativa passa");
+  respostasIA.push({ mensagens: ["Oi!", "Fico no aguardo."] });
+  respostasIA.push({ mensagens: ["Oi!", "Fico no aguardo, viu."] });
+  r.erro(() => ctx.escreverWhatsApp(A, "v:1", { etapa: "entrevista_rh", objetivo: "andamento" }), /insistiu numa frase formal que o app não aceita \("no aguardo"\)/, "duas recusas por frase: o erro diz qual e o que fazer");
 
   // Falha depois das tentativas.
   respostasIA.push({ mensagens: ["só uma"] });

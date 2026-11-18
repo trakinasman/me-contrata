@@ -119,8 +119,11 @@ lá), o formato muda. A tabela de tamanhos acima não vale aqui.
 - O assunto vai direto, numa frase: o que a pessoa quer saber ou dizer. Sem rodeio e
   sem resumo do currículo.
 - Tom do dia a dia, sem formalidade de e-mail. Nunca: "prezado(a)", "venho por meio
-  desta", "sinta-se à vontade", "no aguardo" (de um retorno, positivo ou não), nem as
-  frases proibidas da segunda cobrança. O app recusa o texto que tiver qualquer uma delas.
+  desta", "sinta-se à vontade", "no aguardo" (de um retorno, positivo ou não),
+  "continuo aguardando", "fico aguardando", nem as frases proibidas da segunda
+  cobrança. O app recusa o texto que tiver qualquer uma delas.
+- A última mensagem é a porta aberta ("se ficou alguma dúvida, é só me chamar"), não
+  uma espera. Não feche com "aguardando" nem com um agradecimento solto.
 - O momento do processo define o pedido. Candidatura sem resposta: perguntar o
   andamento. Depois de uma entrevista: agradecer e perguntar os próximos passos.
   Depois de um retorno com promessa ("te aviso quando tiver novidade"): responder
