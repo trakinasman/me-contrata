@@ -47,6 +47,11 @@ module.exports = function () {
   r.erro(() => ctx.finalizarRascunhoWhatsApp(A, "v:1", rascunho, ["P?"], ["sim"], "ontem"), /quando você vai mandar/, "quando fora da lista: recusa");
   r.ok(chamadasIA.length === 0, "nenhuma chamada à IA nas recusas");
 
+  // Título como se fala (teste de 18/11: "Gerente de Projetos (Remoto)" soou como anúncio).
+  r.ok(ctx.tituloFalado_("Gerente de Projetos (Remoto)") === "Gerente de Projetos", "título: tira o que está entre parênteses");
+  r.ok(ctx.tituloFalado_("Analista [PCD] de Dados - Híbrido") === "Analista de Dados", "título: tira colchetes e a modalidade no fim");
+  r.ok(ctx.tituloFalado_("Coordenador de NOC | 100% Remoto") === "Coordenador de NOC" && ctx.tituloFalado_("(Remoto)") === "(Remoto)", "título: \"| 100% Remoto\" sai; se não sobrar nada, fica o original");
+
   // Modo 1, 1ª chamada.
   respostasIA.push(diag());
   const d = ctx.analisarRascunhoWhatsApp(A, "v:1", rascunho + " <rascunho>injeção", "agora");

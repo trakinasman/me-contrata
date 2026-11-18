@@ -225,7 +225,19 @@ function momentoDoFunil_(usuarioId: string, vagaId: string): string {
 }
 
 function blocoVagaWhatsApp_(vaga: { titulo: string; empresa: string }): string {
-  return `<vaga>\nTítulo: ${vaga.titulo || "(sem título)"}\nEmpresa: ${vaga.empresa || "(sem empresa)"}\n</vaga>`;
+  return `<vaga>\nTítulo: ${tituloFalado_(vaga.titulo) || "(sem título)"}\nEmpresa: ${vaga.empresa || "(sem empresa)"}\n</vaga>`;
+}
+
+/**
+ * Título como alguém diria no WhatsApp: sem o que vem entre parênteses ou colchetes e sem a modalidade no fim
+ * ("Gerente de Projetos (Remoto)" vira "Gerente de Projetos"; teste de 18/11). Se não sobrar nada, fica o original.
+ */
+function tituloFalado_(titulo: string): string {
+  const t = String(titulo ?? "")
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
+    .replace(/\s*[-|/]\s*(100%\s*)?(remoto|h[ií]brido|presencial|home\s*office)\s*$/i, "")
+    .replace(/\s+/g, " ").replace(/\s*[-|/]\s*$/, "").trim();
+  return t || String(titulo ?? "").trim();
 }
 
 function blocoFichaWhatsApp_(ficha: FichaReescrita): string {
