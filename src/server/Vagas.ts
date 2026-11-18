@@ -97,7 +97,7 @@ function descartarVaga(token: string, vagaId: unknown, motivo: unknown, detalhe:
 /**
  * Vaga cadastrada pelo próprio candidato (achada fora do agente: indicação, site da empresa, um e-mail do Indeed).
  * Entra no catálogo com id "manual:<uuid>" (o agente nunca gera esse prefixo, então não há conflito) e na lista do
- * candidato sem nota por regras; fica sempre visível (não expira como as do agente). Caso real: Serprol, 17/11/2026.
+ * candidato sem nota por regras; fica sempre visível (não expira como as do agente). Caso real: Seprol, 17/11/2026.
  */
 function adicionarVaga(token: string, dados: unknown): ListaVagas {
   const s = exigirAceite_(token);
@@ -264,7 +264,7 @@ function vagasDoUsuario_(usuarioId: string): ListaVagas {
 
 /**
  * Link do anúncio digitado pelo candidato: só https, sem espaço nem aspas. Indeed e LinkedIn perdem os parâmetros de
- * rastreamento do e-mail (o link da Serprol tinha mais de 300 caracteres; o que importa é o jk / o id da vaga).
+ * rastreamento do e-mail (o link da Seprol tinha mais de 300 caracteres; o que importa é o jk / o id da vaga).
  */
 function linkDeVagaLimpo_(bruto: string): string {
   const t = bruto.trim();
